@@ -850,6 +850,7 @@ int main( int argc, char** argv )
 	std::string clipPath;
 	int debugHooks = 0;//--hooks N: shaders::Hook bits on the plain render, for looking at one stage
 	std::string dumpPath;//--dump PATH: the surface ( h, 0, h_x, h_y ) as raw float32, nx ny first
+	double substepScale = 1.0;//--substep-scale X: the planned substep times X (a Richardson look at the time step)
 
 	for( int i = 1; i < argc; ++i )
 	{
@@ -880,6 +881,8 @@ int main( int argc, char** argv )
 			over = true;
 		else if( argument == "--out" && hasNext )
 			outPath = argv[ ++i ];
+		else if( argument == "--substep-scale" && hasNext )
+			substepScale = std::strtod( argv[ ++i ], nullptr );
 		else if( argument == "--dump" && hasNext )
 			dumpPath = argv[ ++i ];
 		else if( argument == "--hooks" && hasNext )
@@ -1017,6 +1020,7 @@ int main( int argc, char** argv )
 		else
 		{
 			rig.plugin.SetHooksForTest( debugHooks );
+			rig.plugin.SetSubstepScaleForTest( substepScale );
 			for( const std::string& setting : settings )
 			{
 				std::string error;

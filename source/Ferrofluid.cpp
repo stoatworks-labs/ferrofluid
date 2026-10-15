@@ -343,9 +343,9 @@ bool FerrofluidPlugin::ensurePool( const Pool& want )
 	for( PassBuffer& b : state )
 		ok = ok && b.Ensure( want.nx, want.ny, GL_RGBA32F, PassBuffer::Sampling::Nearest );
 	for( PassBuffer& b : work )
-		ok = ok && b.Ensure( want.nx, want.ny, GL_RG32F, PassBuffer::Sampling::Nearest );
-	ok = ok && pack.Ensure( want.nx, want.ny, GL_RG32F, PassBuffer::Sampling::Nearest );
-	ok = ok && force.Ensure( want.nx, want.ny, GL_RG32F, PassBuffer::Sampling::Nearest );
+		ok = ok && b.Ensure( want.nx, want.ny, GL_RGBA32F, PassBuffer::Sampling::Nearest );
+	ok = ok && pack.Ensure( want.nx, want.ny, GL_RGBA32F, PassBuffer::Sampling::Nearest );
+	ok = ok && force.Ensure( want.nx, want.ny, GL_RGBA32F, PassBuffer::Sampling::Nearest );
 	//The surface the camera reads between texels, at twice the pool's grid:
 	//the spectrum zero-padded, which is the band-limited surface sampled
 	//finer, not a smoothing of it. A spike is only fifteen of the pool's
@@ -511,8 +511,17 @@ Plan FerrofluidPlugin::planSubsteps( double frameDt )
 				applied = std::max( applied, field );
 			}
 	out.stressMax = stressAt( applied );
-	out.stressRef = magnet == Magnet::Uniform ? out.stressMax : 0.5 * out.stressMax;
-	const double residual = magnet == Magnet::Uniform ? 0.0 : 0.5 * out.stressMax;
+	//G_ref, the part of a coil's field the exact spectral step carries: the
+	//strongest field's, but never past onset's. Past onset the step would
+	//make the far pool unstable on its own, where the coil's field is nothing
+	//and the saturation (which goes with the local m) is nothing either, and
+	//only the kick's residual would hold it -- which is cut off at the stress's
+	//band, so modes above it ran away (`fetest --extremes`, Three Coils). Below
+	//onset the step is stable everywhere, and the kick carries only the excess,
+	//G - G_c, where the spikes are: small just past onset, where a kick's
+	//( omega dt )^2 distortion matters least.
+	out.stressRef         = magnet == Magnet::Uniform ? out.stressMax : std::min( out.stressMax, physics::CriticalG( fluid ) );
+	const double residual = magnet == Magnet::Uniform ? 0.0 : std::max( out.stressRef, out.stressMax - out.stressRef );
 
 	//The stress's slope. Its energy is local in g = |grad| h, with its minimum
 	//at g = Hy / Sa: the bracket's slope m ( 2 Hy g - 3 Sa g^2 ) is m Hy^2 / Sa

@@ -124,7 +124,7 @@ void main()
 //---------------------------------------------------------------------------
 const char* const kEvolveFragment = R"(
 uniform sampler2D State;  //RGBA32F ( h_k, v_k ), the unnormalised DFT
-uniform sampler2D Force;  //RG32F N_k, the stress's unnormalised DFT
+uniform sampler2D Force;  //RGBA32F: ( outer + i plain )_k and ( sym )_k, the stress's unnormalised DFTs
 uniform ivec2 GridSize;
 uniform vec2 Domain;      //metres
 uniform float Gravity;    //g, m/s^2
@@ -187,7 +187,9 @@ void main()
 		float s        = k / OuterCut;
 		float s2       = s * s;
 		float s4       = s2 * s2;
-		v += Dt * k * InvRho * ( exp( -s4 * s4 ) * max( k, Kc ) / Kc * outer + exp( -r4 * r4 ) * plain );
+		//The second field is the residual's half that |grad| acts on.
+		vec2 sym = texelFetch( Force, cell, 0 ).zw;
+		v += Dt * k * InvRho * ( exp( -s4 * s4 ) * max( k, Kc ) / Kc * outer + exp( -r4 * r4 ) * ( plain + k * sym ) );
 	}
 
 	//Cowley & Rosensweig: rho omega^2 = rho g k + sigma k^3 - G k^2.
@@ -241,11 +243,12 @@ void main()
 	stateOut = vec4( h2, v2 );
 
 	//The next substep's inverse: W h + i |grad| h, two real fields in one
-	//complex transform ( A + i B ). W = max( k, k_c ): the model's stress is
-	//written in W h (Fluid.h), the local field's residual in |grad| h.
+	//complex transform ( A + i B ), and h itself in the second. W = max( k,
+	//k_c ): the model's stress is written in W h (Fluid.h); the local field's
+	//residual needs |grad| h and h.
 	vec2 a  = max( k, Kc ) * h2;
 	vec2 b  = k * h2;
-	packOut = Norm * vec4( a.x - b.y, a.y + b.x, 0.0, 0.0 );
+	packOut = Norm * vec4( a.x - b.y, a.y + b.x, h2 );
 }
 )";
 
@@ -253,7 +256,7 @@ void main()
 // force: the normal stress on the surface, in real space.
 //---------------------------------------------------------------------------
 const char* const kForceFragment = R"(
-uniform sampler2D Real;      //( W h, |grad| h ): dimensionless both
+uniform sampler2D Real;      //( W h, |grad| h, h ): dimensionless, dimensionless, metres
 uniform sampler2D CoilTable; //H_z per amp at the surface, from rho = 0 to RhoMax
 uniform sampler2D FluidTable;//G from H_a = 0 to FieldMax
 uniform ivec2 GridSize;
@@ -295,7 +298,7 @@ float unit( uint bits )
 void main()
 {
 	ivec2 cell = ivec2( gl_FragCoord.xy );
-	vec2 real  = texelFetch( Real, cell, 0 ).xy;
+	vec3 real  = texelFetch( Real, cell, 0 ).xyz;
 
 	//The local field. Uniform: the spectral step carries all of it. A coil:
 	//the normal field it makes at this point (the sum over the coils), and the
@@ -322,11 +325,19 @@ void main()
 	float g     = real.x;
 	float outer = RhoG / Kc * m * g * g * ( Hy - Sa * g );
 
-	//The local approximation: the magnetic drive here is this point's G, and
-	//the spectral step has already applied G_ref to every mode.
-	float N = 0.0;
+	//The local approximation, written so it stays the gradient of an energy:
+	//the magnetic energy -1/2 integral of G( x ) h |grad| h has the stress
+	//1/2 [ G |grad| h + |grad|( G h ) ] (|grad| is self-adjoint; G( x ) |grad|
+	//alone is not, and turned a coil's hexagons into rolls). The spectral step
+	//has already applied G_ref to every mode; this is the rest, G - G_ref. The
+	//second half travels as G h, for the evolve to take its |grad|.
+	float N   = 0.0;
+	float sym = 0.0;
 	if( Magnet != 0 && ( Hooks & 32 ) == 0 )
-		N += ( stress - StressRef ) * real.y;
+	{
+		N   = 0.5 * ( stress - StressRef ) * real.y;
+		sym = 0.5 * ( stress - StressRef ) * real.z;
+	}
 
 	//The floor the instability grows from: white in space and time, the sum
 	//of four uniform draws (unit variance, integer hashed).
@@ -337,7 +348,7 @@ void main()
 		N += NoiseRms * ( sum - 2.0 ) * 1.7320508;
 	}
 
-	fragColor = vec4( outer, N, 0.0, 0.0 );
+	fragColor = vec4( outer, N, sym, 0.0 );
 }
 )";
 

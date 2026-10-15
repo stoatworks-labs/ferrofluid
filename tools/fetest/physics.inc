@@ -388,13 +388,12 @@ int runHexagons( const Perturb& perturb )
 int runHysteresis( const Perturb& perturb )
 {
 	std::printf( "\n=== hysteresis: a slow up-sweep jumps to finite spikes at onset; a slow down-sweep holds them below it and loses them at the "
-	             "saddle-node the model's own three-mode reduction predicts\n" );
+	             "saddle-node the model's own three-mode reduction (its energy averaged exactly over a hexagonal cell) predicts\n" );
 	const physics::Datasheet& fluid = physics::FluidOf( physics::FluidId::EFH1 );
 	const Pool pool                 = hexagonPool( fluid );
 	const double kc                 = physics::CriticalWavenumber( fluid );
-	//Two members of the family ( lambda Hy, lambda^2 Sa ), whose reduction
-	//predicts the same saddle-node with amplitudes 1 / lambda: the next
-	//order's error goes as A^2, so the larger lambda must land nearer.
+	//Two members of the family ( lambda Hy, lambda^2 Sa ): the same loop,
+	//spikes a factor 2 apart (below).
 	struct Member
 	{
 		double hy, sa;
@@ -454,13 +453,14 @@ int runHysteresis( const Perturb& perturb )
 			}
 		}
 		errors[ which ] = collapse > 0.0 ? std::fabs( collapse - msn ) : 1.0;
-		//The tolerance: one step of the sweep, plus the reduction's own next
-		//order, ( A_sn / A_1 )^2 of the loop's width with A_sn the amplitude at
-		//the saddle-node (the terms it drops are O( A^5 ) in the energy, two
-		//orders past the A^3 that sets the loop).
-		const physics::Hexagons atSn = physics::ThreeMode( physics::Nonlinear { member.hy, member.sa }, msn + 1e-9 );
+		//The tolerance: one step of the sweep (the collapse is seen at the first
+		//step past the saddle-node), plus 5% of the loop's width for what the
+		//reduction leaves out -- the outer cut passes 96% of the stress at 2 k_c
+		//and 99% at sqrt 3 k_c, and the families past 2 k_c enter at the square
+		//of the last kept one's share of the pattern, ( C / A )^2 ~ 1e-4 here.
+		const physics::Hexagons atSn = physics::ThreeMode( physics::Nonlinear { member.hy, member.sa }, msn + 1e-6 );
 		const double width           = 1.0 - msn;
-		const double tolerance       = step + width * std::pow( atSn.peak, 2.0 );
+		const double tolerance       = step + 0.05 * width;
 		//Up: no jump below onset (the flat state is stable there), and one by
 		//two steps above it (a mode at m - 1 = 5e-4 grows at a fraction of a
 		//per second, too slowly to show in 2.5 s; the next step's does).
@@ -469,13 +469,14 @@ int runHysteresis( const Perturb& perturb )
 		            model.hysteresis, model.saturation, jump, jumpAmplitude, at1.peak ) );
 		Check( collapse > 0.0 && errors[ which ] <= tolerance && collapse < 1.0 - 2.0 * step,
 		       fmt( "Hy %.2f, Sa %.1f: the down-sweep holds to m %.4f and loses them there; the reduction's saddle-node %.4f (loop width "
-		            "%.4f, tolerance %.4f = a step + width x A_sn^2)",
-		            model.hysteresis, model.saturation, collapse, msn, width, tolerance ) );
+		            "%.4f, tolerance %.4f = a step + 5%% of the width); at the saddle-node the reduction's spikes are %.3f k_c^-1",
+		            model.hysteresis, model.saturation, collapse, msn, width, tolerance, atSn.peak ) );
 		++which;
 	}
-	//The reduction's saddle-node depends on Hy^2 / Sa alone; the amplitudes
-	//halve from one member to the other. Both landing on it says the loop is
-	//the model's, not an accident of one amplitude.
+	//The model's energy is exactly invariant under ( lambda Hy, lambda^2 Sa )
+	//with heights 1 / lambda (it scales by 1 / lambda^2 as a whole), so the two
+	//members share one saddle-node while their spikes differ by a factor of 2.
+	//Both landing on it says the solver's loop is the model's, at either size.
 	Check( errors[ 0 ] <= step && errors[ 1 ] <= step,
 	       fmt( "both members, amplitudes a factor 2 apart, collapse within a step of the same predicted saddle-node (%.4f and %.4f off)",
 	            errors[ 0 ], errors[ 1 ] ) );

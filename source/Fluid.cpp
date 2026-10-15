@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <complex>
+#include <vector>
 
 namespace ferrofluid::physics
 {
@@ -221,61 +222,189 @@ double LinearOperator( double q, double m )
 	return 1.0 + q * q - 2.0 * m * q;
 }
 
-double QuarticEffective( const Nonlinear& model, double m )
+namespace
 {
-	const double l3 = LinearOperator( std::sqrt( 3.0 ), m );
-	const double l2 = LinearOperator( 2.0, m );
-	if( l3 <= 0.0 || l2 <= 0.0 )
-		return -1e300;//a harmonic is itself unstable: no weakly nonlinear answer
-	const double hy2 = model.hysteresis * model.hysteresis;
-	return 22.5 * model.saturation * m - 12.0 * hy2 * m * m / l3 - 3.0 * hy2 * m * m / l2;
+/// The reduction's cell: one period of the hexagonal pattern, k_c = 1, on a
+/// rectangle 4 pi by 4 pi / sqrt 3 that every mode of the three families is
+/// periodic on, sampled 48 x 48. The energy's integrand is a trigonometric
+/// polynomial of degree at most 16 in x and 8 in y there, so the sample mean
+/// is its exact average.
+struct Cell
+{
+	static constexpr int kN = 48;
+	std::vector< double > s1, s3, s2;///< 2 sum cos over each family
+	Cell()
+	{
+		const double r3 = std::sqrt( 3.0 );
+		const double k[ 3 ][ 2 ] = { { 1.0, 0.0 }, { -0.5, 0.5 * r3 }, { -0.5, -0.5 * r3 } };
+		s1.resize( kN * kN );
+		s3.resize( kN * kN );
+		s2.resize( kN * kN );
+		for( int j = 0; j < kN; ++j )
+			for( int i = 0; i < kN; ++i )
+			{
+				const double x = 4.0 * kPi * i / kN, y = 4.0 * kPi / r3 * j / kN;
+				double a = 0.0, b = 0.0, c = 0.0;
+				for( int n = 0; n < 3; ++n )
+				{
+					const int o = ( n + 1 ) % 3;
+					a += 2.0 * std::cos( k[ n ][ 0 ] * x + k[ n ][ 1 ] * y );
+					b += 2.0 * std::cos( ( k[ n ][ 0 ] - k[ o ][ 0 ] ) * x + ( k[ n ][ 1 ] - k[ o ][ 1 ] ) * y );
+					c += 2.0 * std::cos( 2.0 * k[ n ][ 0 ] * x + 2.0 * k[ n ][ 1 ] * y );
+				}
+				s1[ j * kN + i ] = a;
+				s3[ j * kN + i ] = b;
+				s2[ j * kN + i ] = c;
+			}
+	}
+};
+
+const Cell& cell()
+{
+	static const Cell instance;
+	return instance;
 }
+
+/// The reduced energy per area and its gradient and Hessian in ( A, B, C ):
+/// the three modes at k_c of amplitude A each, the six at sqrt( 3 ) k_c of
+/// amplitude B, the six at 2 k_c of amplitude C (heights, k_c units), and the
+/// model's local energy in g = W h averaged over the cell.
+double reducedEnergy( const Nonlinear& model, double m, const double p[ 3 ], double grad[ 3 ], double hess[ 3 ][ 3 ] )
+{
+	const Cell& c   = cell();
+	const double w3 = std::sqrt( 3.0 ), w2 = 2.0;
+	const double l1 = LinearOperator( 1.0, m ), l3 = LinearOperator( w3, m ), l2 = LinearOperator( 2.0, m );
+	//<h^2> = 6 A^2 + 6 B^2 + 6 C^2: half of l times it.
+	double energy = 3.0 * ( l1 * p[ 0 ] * p[ 0 ] + l3 * p[ 1 ] * p[ 1 ] + l2 * p[ 2 ] * p[ 2 ] );
+	const double lin[ 3 ] = { 6.0 * l1, 6.0 * l3, 6.0 * l2 };
+	for( int i = 0; i < 3; ++i )
+	{
+		grad[ i ] = lin[ i ] * p[ i ];
+		for( int j = 0; j < 3; ++j )
+			hess[ i ][ j ] = i == j ? lin[ i ] : 0.0;
+	}
+	const int n = Cell::kN * Cell::kN;
+	double v = 0.0, gv[ 3 ] = {}, hv[ 3 ][ 3 ] = {};
+	for( int i = 0; i < n; ++i )
+	{
+		const double basis[ 3 ] = { c.s1[ i ], w3 * c.s3[ i ], w2 * c.s2[ i ] };
+		const double g          = p[ 0 ] * basis[ 0 ] + p[ 1 ] * basis[ 1 ] + p[ 2 ] * basis[ 2 ];
+		v += m * ( -model.hysteresis * g * g * g / 3.0 + model.saturation * g * g * g * g / 4.0 );
+		const double d1 = m * ( -model.hysteresis * g * g + model.saturation * g * g * g );
+		const double d2 = m * ( -2.0 * model.hysteresis * g + 3.0 * model.saturation * g * g );
+		for( int a = 0; a < 3; ++a )
+		{
+			gv[ a ] += d1 * basis[ a ];
+			for( int b = 0; b < 3; ++b )
+				hv[ a ][ b ] += d2 * basis[ a ] * basis[ b ];
+		}
+	}
+	energy += v / n;
+	for( int a = 0; a < 3; ++a )
+	{
+		grad[ a ] += gv[ a ] / n;
+		for( int b = 0; b < 3; ++b )
+			hess[ a ][ b ] += hv[ a ][ b ] / n;
+	}
+	return energy;
+}
+
+/// Newton from `p` to a stationary point; true if it converged to a minimum
+/// with A > 0.
+bool settle( const Nonlinear& model, double m, double p[ 3 ] )
+{
+	for( int iter = 0; iter < 200; ++iter )
+	{
+		double g[ 3 ], H[ 3 ][ 3 ];
+		reducedEnergy( model, m, p, g, H );
+		//Solve H d = g by Cramer (3 x 3).
+		const double det = H[ 0 ][ 0 ] * ( H[ 1 ][ 1 ] * H[ 2 ][ 2 ] - H[ 1 ][ 2 ] * H[ 2 ][ 1 ] )
+		                   - H[ 0 ][ 1 ] * ( H[ 1 ][ 0 ] * H[ 2 ][ 2 ] - H[ 1 ][ 2 ] * H[ 2 ][ 0 ] )
+		                   + H[ 0 ][ 2 ] * ( H[ 1 ][ 0 ] * H[ 2 ][ 1 ] - H[ 1 ][ 1 ] * H[ 2 ][ 0 ] );
+		if( !( std::fabs( det ) > 1e-300 ) )
+			return false;
+		double d[ 3 ];
+		for( int k = 0; k < 3; ++k )
+		{
+			double M[ 3 ][ 3 ];
+			for( int r = 0; r < 3; ++r )
+				for( int s = 0; s < 3; ++s )
+					M[ r ][ s ] = s == k ? g[ r ] : H[ r ][ s ];
+			d[ k ] = ( M[ 0 ][ 0 ] * ( M[ 1 ][ 1 ] * M[ 2 ][ 2 ] - M[ 1 ][ 2 ] * M[ 2 ][ 1 ] )
+			           - M[ 0 ][ 1 ] * ( M[ 1 ][ 0 ] * M[ 2 ][ 2 ] - M[ 1 ][ 2 ] * M[ 2 ][ 0 ] )
+			           + M[ 0 ][ 2 ] * ( M[ 1 ][ 0 ] * M[ 2 ][ 1 ] - M[ 1 ][ 1 ] * M[ 2 ][ 0 ] ) )
+			         / det;
+		}
+		//Damped: never more than half of A in one step.
+		double scale = 1.0;
+		if( std::fabs( d[ 0 ] ) > 0.5 * std::fabs( p[ 0 ] ) + 1e-12 )
+			scale = 0.5 * std::fabs( p[ 0 ] ) / std::fabs( d[ 0 ] );
+		for( int k = 0; k < 3; ++k )
+			p[ k ] -= scale * d[ k ];
+		if( std::fabs( d[ 0 ] ) * scale < 1e-13 && std::fabs( d[ 1 ] ) * scale < 1e-13 && std::fabs( d[ 2 ] ) * scale < 1e-13 )
+		{
+			//A minimum: the Hessian positive definite (leading minors).
+			reducedEnergy( model, m, p, g, H );
+			const double m1 = H[ 0 ][ 0 ], m2 = H[ 0 ][ 0 ] * H[ 1 ][ 1 ] - H[ 0 ][ 1 ] * H[ 1 ][ 0 ];
+			const double m3 = H[ 0 ][ 0 ] * ( H[ 1 ][ 1 ] * H[ 2 ][ 2 ] - H[ 1 ][ 2 ] * H[ 2 ][ 1 ] )
+			                  - H[ 0 ][ 1 ] * ( H[ 1 ][ 0 ] * H[ 2 ][ 2 ] - H[ 1 ][ 2 ] * H[ 2 ][ 0 ] )
+			                  + H[ 0 ][ 2 ] * ( H[ 1 ][ 0 ] * H[ 2 ][ 1 ] - H[ 1 ][ 1 ] * H[ 2 ][ 0 ] );
+			return p[ 0 ] > 1e-9 && m1 > 0.0 && m2 > 0.0 && m3 > 0.0;
+		}
+	}
+	return false;
+}
+} // namespace
 
 Hexagons ThreeMode( const Nonlinear& model, double m )
 {
+	//Continuation down from well past onset, where the upper branch is the
+	//only nontrivial minimum, to m in steps: the branch followed, not guessed.
 	Hexagons out;
-	const double q = QuarticEffective( model, m );
-	if( !( q > 0.0 ) || m <= 0.0 )
+	if( model.saturation <= 0.0 )
 		return out;
-	//dF/dA = 0 on the symmetric hexagon, A != 0:
-	//    Q A^2 - 3 Hy m A + 3 ( 1 - m ) = 0
-	const double hy   = model.hysteresis;
-	const double disc = 9.0 * hy * hy * m * m - 12.0 * q * ( 1.0 - m );
-	if( disc < 0.0 )
+	double p[ 3 ] = { 0.5 * std::max( model.hysteresis, 0.1 ) / model.saturation, 0.0, 0.0 };
+	const double start = std::max( m, 1.02 );
+	if( !settle( model, start, p ) )
 		return out;
-	const double a = ( 3.0 * hy * m + std::sqrt( disc ) ) / ( 2.0 * q );
-	if( !( a > 0.0 ) )
-		return out;
+	for( double mm = start; mm > m; )
+	{
+		mm = std::max( m, mm - 2e-4 );
+		if( !settle( model, mm, p ) )
+			return out;
+	}
 	out.exists    = true;
-	out.amplitude = a;
-	out.sqrt3     = 2.0 * hy * m * a * a / LinearOperator( std::sqrt( 3.0 ), m );
-	out.twice     = hy * m * a * a / LinearOperator( 2.0, m );
-	out.peak      = 6.0 * ( out.amplitude + out.sqrt3 + out.twice );
+	out.amplitude = p[ 0 ];
+	out.sqrt3     = p[ 1 ];
+	out.twice     = p[ 2 ];
+	out.peak      = 6.0 * ( p[ 0 ] + p[ 1 ] + p[ 2 ] );
 	return out;
 }
 
 double SaddleNode( const Nonlinear& model )
 {
-	if( model.hysteresis <= 0.0 )
+	if( model.hysteresis <= 0.0 || model.saturation <= 0.0 )
 		return 1.0;
-	auto exists = [ & ]( double m ) {
-		const double q = QuarticEffective( model, m );
-		return q > 0.0 && 9.0 * sq( model.hysteresis * m ) - 12.0 * q * ( 1.0 - m ) >= 0.0;
-	};
-	double lo = 0.3, hi = 1.0;
-	if( exists( lo ) )
-		return lo;
-	for( int i = 0; i < 200; ++i )
+	//Down from onset in steps of 1e-4 following the branch, then halve the
+	//last step until it is 1e-9: the lowest m at which the minimum survives.
+	double p[ 3 ] = { 0.5 * model.hysteresis / model.saturation, 0.0, 0.0 };
+	double m      = 1.02;
+	if( !settle( model, m, p ) )
+		return 1.0;
+	double step = 1e-4;
+	while( step > 1e-9 && m > 0.3 )
 	{
-		const double mid = 0.5 * ( lo + hi );
-		if( mid == lo || mid == hi )
-			break;
-		if( exists( mid ) )
-			hi = mid;
+		double trial[ 3 ] = { p[ 0 ], p[ 1 ], p[ 2 ] };
+		if( settle( model, m - step, trial ) )
+		{
+			m -= step;
+			for( int k = 0; k < 3; ++k )
+				p[ k ] = trial[ k ];
+		}
 		else
-			lo = mid;
+			step *= 0.5;
 	}
-	return hi;
+	return m;
 }
 
 } // namespace ferrofluid::physics

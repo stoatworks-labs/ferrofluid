@@ -74,7 +74,7 @@ const ControlInfo kTable[] = {
 	{ PT_AUDIO, "Audio", "Drive", Kind::Buffer, 0.0f, nullptr, 0 },
 	option( PT_BAND, "Band", "Drive", 0.0f, kBandNames, static_cast< int >( Band::Count ) ),
 	standard( PT_GAIN, "Gain", "Drive", ParamFromCurrent( 0.2 ) ),
-	standard( PT_BIAS, "Bias", "Drive", ParamFromCurrent( 0.95 ) ),
+	standard( PT_BIAS, "Bias", "Drive", ParamFromCurrent( 0.98 ) ),
 	standard( PT_COIL_LAG, "Coil Lag", "Drive", ParamFromLag( 0.04 ) ),
 	standard( PT_THRESHOLD, "Threshold", "Drive", 0.4f ),
 	standard( PT_PULSE, "Pulse", "Drive", ParamFromPulse( 0.15 ) ),

@@ -103,7 +103,7 @@ step "Build (universal)"
 #---------------------------------------------------------------------------
 log="$( mktemp )"
 cmake -B "$BUILD" -DCMAKE_BUILD_TYPE=Release >"$log" 2>&1 || { cat "$log"; fail "configure"; }
-cmake --build "$BUILD" -j"$(sysctl -n hw.ncpu)" >"$log" 2>&1 || { tail -40 "$log"; fail "build"; }
+cmake --build "$BUILD" -j8 >"$log" 2>&1 || { tail -40 "$log"; fail "build"; }
 # The SDK's own FFGLUtilities.cpp warns about RAND_MAX; anything else is ours.
 if grep -E 'warning:' "$log" | grep -v 'external/ffgl' | grep -q .; then
 	grep -E 'warning:' "$log" | grep -v 'external/ffgl' | sed 's/^/   /'

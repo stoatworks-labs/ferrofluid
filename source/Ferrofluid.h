@@ -294,9 +294,9 @@ private:
 	ffglex::FFGLScreenQuad quad;
 
 	PassBuffer state[ 2 ];      ///< RGBA32F spectral ( h_k, v_k )
-	PassBuffer pack;            ///< RG32F: the next inverse's input
-	PassBuffer work[ 2 ];       ///< RG32F: the substep transforms' ping-pong
-	PassBuffer force;           ///< RG32F: the stress, real space
+	PassBuffer pack;            ///< RGBA32F: the next inverse's input
+	PassBuffer work[ 2 ];       ///< RGBA32F: the substep transforms' ping-pong
+	PassBuffer force;           ///< RGBA32F: the stress, real space
 	PassBuffer surfaceWork[ 2 ];///< RGBA32F, twice the pool's grid: the camera's surface, and its transform's ping-pong
 	PassBuffer testWork[ 2 ];   ///< RGBA32F, the pool's grid: TransformForTest only
 	std::vector< PassBuffer > bounds;

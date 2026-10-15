@@ -39,22 +39,32 @@
     The surface's nonlinear normal stress is the model's, NOT derived from
     Gailitis's energy expansion (J. Fluid Mech. 82, 1977) or Friedrichs & Engel
     (Phys. Rev. E 64, 2001): that was the preferred route and was not done
-    honestly in the time (AGENTS.md). It is
+    honestly in the time (AGENTS.md). It is the gradient of a local energy
 
-        N( x ) = rho g m( x ) [ Hy k_c h^2 - Sa k_c^2 h^3 ]
+        E = ( rho g / k_c^2 ) integral of m( x ) [ -Hy g^3 / 3 + Sa g^4 / 4 ],
+        g = W h,  W = max( |grad|, k_c )
 
-    -- the gradient of a local energy -Hy h^3 / 3 + Sa h^4 / 4 (in k_c units)
-    scaled with the local magnetic number, so it vanishes where there is no
-    field. Hy (Hysteresis) breaks up/down symmetry: it is what makes hexagons
-    and a subcritical, hysteretic onset. Sa (Saturation) bounds the spikes.
-    Both are CHOSEN constants, exposed as controls.
+    so the stress is N = ( rho g / k_c ) W[ m ( Hy g^2 - Sa g^3 ) ]: quadratic
+    plus cubic in h, scaled with the local magnetic number so it vanishes where
+    there is no field. Hy (Hysteresis) breaks up/down symmetry: it is what makes
+    hexagons and a subcritical, hysteretic onset. Sa (Saturation) bounds the
+    spikes. Both are CHOSEN constants, exposed as controls.
 
-    ThreeMode() is the model's own weakly nonlinear reduction: three modes at
-    k_c 120 degrees apart, with the six harmonics at sqrt( 3 ) k_c and the six
-    at 2 k_c slaved adiabatically (the quadratic term drives them and they feed
-    back at fourth order). It predicts the hexagons' amplitude and the
-    saddle-node where they collapse on a down-sweep; `fetest --hysteresis`
-    holds the GPU solver to it.
+    Why W h and not h: an energy local in h saturates every point at the same
+    height, and the spikes came out as flat-topped mesas. Local in |grad| h, the
+    cap is on g, so h comes out cusped at a tip -- but then the cap costs short
+    waves more than long ones and dragged the lattice to 0.73 k_c as the drive
+    rose. W = max( |grad|, k_c ) is |grad| above k_c (the tips) and k_c below it
+    (wavelength-neutral), and the lattice stays at k_c (AGENTS.md, the traps).
+
+    ThreeMode() is the model's own reduction: three modes at k_c 120 degrees
+    apart, with the six harmonics at sqrt( 3 ) k_c and the six at 2 k_c, the
+    model's energy averaged exactly over one hexagonal cell and minimised over
+    the three amplitudes. A closed-form fourth-order truncation of the same
+    reduction was tried first and missed the GPU's harmonics by a factor of
+    two to thirteen: the cubic drives the harmonics at A^3 Sa, the same order
+    as the quadratic's A^2 Hy wherever A ~ Hy / Sa, which is everywhere on the
+    branch. `fetest --hysteresis` holds the GPU solver to this reduction.
 */
 namespace ferrofluid::physics
 {
@@ -162,21 +172,17 @@ struct Nonlinear
 /// The dimensionless linear operator l( q ) = 1 + q^2 - 2 m q, q = k / k_c.
 double LinearOperator( double q, double m );
 
-/// The hexagons' effective quartic coefficient after slaving the harmonics:
-/// Q( m ) = 22.5 Sa m - 12 Hy^2 m^2 / l( sqrt 3 ) - 3 Hy^2 m^2 / l( 2 ).
-double QuarticEffective( const Nonlinear& model, double m );
-
 struct Hexagons
 {
 	bool exists      = false;
-	double amplitude = 0.0;///< A, in k_c units: each of the six modes is A, h = 2 A sum cos
-	double sqrt3     = 0.0;///< the slaved sqrt( 3 ) k_c harmonic, k_c units
-	double twice     = 0.0;///< the slaved 2 k_c harmonic, k_c units
+	double amplitude = 0.0;///< A, in k_c units: each of the three k_c modes is A, h = 2 A sum cos
+	double sqrt3     = 0.0;///< each of the sqrt( 3 ) k_c harmonics, k_c units
+	double twice     = 0.0;///< each of the 2 k_c harmonics, k_c units
 	double peak      = 0.0;///< the height at a spike's apex, k_c units
 };
-/// The upper (stable) branch at m, if there is one.
+/// The upper (stable) branch at m, followed down from past onset.
 Hexagons ThreeMode( const Nonlinear& model, double m );
-/// The saddle-node: the lowest m at which hexagons exist. 1 when Hy = 0.
+/// The saddle-node: the lowest m at which the hexagons survive. 1 when Hy = 0.
 double SaddleNode( const Nonlinear& model );
 
 } // namespace ferrofluid::physics

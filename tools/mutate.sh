@@ -65,7 +65,7 @@ PY
 
 	printf '\n== mutant: %s\n' "$what"
 	cmake -S "$tree" -B "$tree/build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 >/dev/null
-	cmake --build "$tree/build" --target fetest -j"$(sysctl -n hw.ncpu)" >/dev/null 2>&1
+	cmake --build "$tree/build" --target fetest -j8 >/dev/null 2>&1
 	status=0
 	extra=()
 	[[ "$check" == "--coil" || "$check" == "--beat" ]] || extra=( --size 320x180 )
