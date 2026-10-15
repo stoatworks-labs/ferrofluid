@@ -10,18 +10,23 @@
     The state is SPECTRAL: ( h_k, v_k ), the unnormalised DFT of the height
     and its rate, on an Nx x Ny periodic grid (the pool). One substep is:
 
-        1. **fft**     inverse, RG32F: Norm ( h_k + i |k| h_k ) to real space,
-                       giving ( h, |grad| h ) -- two real fields in one
-                       complex transform.
-        2. **force**   the frame's grid, RG32F: the nonlinear normal stress in
-                       real space (Fluid.h's quadratic and cubic in h, scaled by
-                       the local magnetic number), the local-field residual
-                       ( G( x ) - G_ref ) |grad| h, and the noise floor.
-        3. **fft**     forward, RG32F: the stress to N_k.
-        4. **evolve**  RGBA32F + RG32F (two targets): every mode kicked by
-                       ( k / rho ) N_k dt, then advanced EXACTLY over dt as the
-                       damped oscillator with the Cowley-Rosensweig omega( k )
-                       at G_ref and Lamb's damping; and the next substep's pack.
+        1. **fft**     inverse, RGBA32F: the pack, Norm ( W h_k + i |k| h_k,
+                       h_k ), to real space, giving ( W h, |grad| h, h ) --
+                       two real fields in one complex transform, and h in
+                       the other.
+        2. **force**   RGBA32F: in real space, the model's bracket
+                       m ( Hy g^2 - Sa g^3 ) with g = W h, scaled by the local
+                       magnetic number (Fluid.h); the local-field residual's
+                       two halves, ( G( x ) - G_ref ) |grad| h and
+                       ( G( x ) - G_ref ) h; and the noise floor.
+        3. **fft**     forward, RGBA32F: the stresses to the spectrum.
+        4. **evolve**  RGBA32F x 2 (two targets): every mode kicked by
+                       ( k / rho ) N_k dt -- the bracket weighted by W and
+                       low-passed above the plan's outer cut, the residual's
+                       second half given its |k| -- then advanced EXACTLY over
+                       dt as the damped oscillator with the Cowley-Rosensweig
+                       omega( k ) at G_ref and Lamb's damping; and the next
+                       substep's pack.
 
     So the linear theory is exact per mode for any dt (millpond's propagator),
     and only the stress is explicit: a kick then an exact drift is symplectic
@@ -30,7 +35,8 @@
 
     The transform is a Stockham autosort FFT of mixed radix (16, 8, 4, 2:
     Govindaraju et al., SC 2008), one output per fragment, twiddles from a
-    double-precision table: a 512 x 256 grid is four passes each way.
+    double-precision table: a 512 x 256 grid is five passes a transform
+    (16, 16, 2 along the 512; 16, 16 along the 256).
 
     Once a frame:
 

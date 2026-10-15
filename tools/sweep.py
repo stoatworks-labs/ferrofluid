@@ -54,7 +54,8 @@ SWEEP = {
     "Threshold": (["Threshold=0"], ["Threshold=1"], MUSIC + ["Fire On=Onset", "Gain=0.6"]),
     "Pulse": (["Pulse=0"], ["Pulse=1"], []),
     "Magnet": (["Magnet=Uniform"], ["Magnet=Three Coils"], []),
-    "Coil Size": (["Coil Size=0.3"], ["Coil Size=0.8"], []),
+    # The Over sits on a Helmholtz pair (Uniform), where no coil has a size.
+    "Coil Size": (["Coil Size=0.3"], ["Coil Size=0.8"], ["Magnet=Coil"]),
     "Coil Spread": (["Coil Spread=0.2"], ["Coil Spread=0.8"], ["Magnet=Three Coils"]),
     "Fluid": (["Fluid=EFH1"], ["Fluid=EMG 909"], []),
     "Hysteresis": (["Hysteresis=0"], ["Hysteresis=1"], PATTERN),

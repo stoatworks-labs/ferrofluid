@@ -328,7 +328,9 @@ void main()
 	//The local approximation, written so it stays the gradient of an energy:
 	//the magnetic energy -1/2 integral of G( x ) h |grad| h has the stress
 	//1/2 [ G |grad| h + |grad|( G h ) ] (|grad| is self-adjoint; G( x ) |grad|
-	//alone is not, and turned a coil's hexagons into rolls). The spectral step
+	//alone is not, so it was no energy at all). It was suspected of turning a
+	//coil's hexagons into rolls and wasn't the cause (AGENTS.md); it stays
+	//because the model should be an energy. The spectral step
 	//has already applied G_ref to every mode; this is the rest, G - G_ref. The
 	//second half travels as G h, for the evolve to take its |grad|.
 	float N   = 0.0;

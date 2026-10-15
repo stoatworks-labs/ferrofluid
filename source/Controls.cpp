@@ -64,9 +64,10 @@ ControlInfo event( unsigned int id, const char* name, const char* group )
 }
 
 //---------------------------------------------------------------------------
-// The defaults: a 12 cm field of EFH1 over one 2.5 cm solenoid, biased just
-// under the onset, kicked on every beat; the source seen from 35 degrees
-// under one soft box. See AGENTS.md ("Decisions") for how they were chosen.
+// The defaults: a 10 cm field of EFH1 over one solenoid of 4 cm radius,
+// biased inside the hysteresis loop just under onset and kicked past it on
+// every beat; the source seen from 35 degrees under three strip lights. See
+// AGENTS.md ("Decisions") for how they were chosen.
 //---------------------------------------------------------------------------
 const ControlInfo kTable[] = {
 	option( PT_FIRE_ON, "Fire On", "Drive", 1.0f, kFireOnNames, static_cast< int >( FireOn::Count ) ),
