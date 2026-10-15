@@ -159,10 +159,10 @@ What the implementation is measured against.
 
 What this set out to be. No code, assets or binaries from any of these were used or examined — the debt is to the idea.
 
-### Ferrofluid sculpture
+### Photographs of ferrofluid spikes
 
-Sachiko Kodama's ferrofluid sculptures, and the many photographs of spiked ferrofluid in
-a dish over a magnet. Built from the physics; nothing is copied from anyone's software,
+The familiar photograph of spiked ferrofluid in a dish over a magnet, glossy black under a
+studio's soft boxes. Built from the physics; nothing is copied from anyone's software,
 images or design.
 
 ## Getting this wrong

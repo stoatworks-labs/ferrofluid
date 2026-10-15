@@ -30,7 +30,7 @@ field approximation, the substep planner, the pool's size, or the FFT.
 - The summary line of `--out` gives the substeps, the current (in Ic and amps), m, max |h| and the steepest slope.
 
 ## Verify
-- Everything: `tools/verify.sh` (about 25 minutes on a shared Mac: shader
+- Everything: `tools/verify.sh` (about 11 minutes on this Mac: shader
   hygiene, `glslc`, the submodule pin, a fresh universal build with no
   warnings, both bundles through lipo, plist, ad-hoc signature, `oxbow probe`
   and `selftest`; every GPU check at 1280x720 and 320x180; four of them again on

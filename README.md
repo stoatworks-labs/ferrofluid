@@ -147,11 +147,14 @@ The critical current behind Bias = 1, at the default coil size and spread:
 | EMG 901 | 17.27 A | 5.05 A | 5.66 A | 8.81 mm | 12.36 kA/m (15.5 mT) |
 | EMG 909 | 21.60 A | 6.32 A | 7.07 A | 10.23 mm | 15.46 kA/m (19.4 mT) |
 
-Render cost, GPU time by `GL_TIME_ELAPSED`, median of 120 frames after a warm-up, on a
-GPU shared with other work, so the numbers wobble a little from run to run. At the
-defaults (12 substeps a frame): the source **4.01 ms** at 720p, **4.42 ms** at 1080p and
-**6.15 ms** at 4K; the Over **4.03**, **4.60** and **7.99 ms**. Three Coils seen from 60°:
-**4.22**, **4.60** and **7.71 ms**. Most of it is the pool, which costs the same at any
+Render cost, GPU time by `GL_TIME_ELAPSED`, median of 120 frames after a warm-up. The
+quietest of three runs within the hour, at the defaults (12 substeps a frame): the source
+**4.01 ms** at 720p, **4.42 ms** at 1080p and **6.15 ms** at 4K; the Over **4.03**,
+**4.60** and **7.99 ms**. Three Coils seen from 60°: **4.22**, **4.60** and **7.71 ms**.
+The GPU was shared, with Resolume Arena running on it for another job, and the other two
+runs came out up to three and a half times slower (verify.sh's own: the source 4.28, 4.78
+and 8.30 ms; Three Coils at 4K 27 ms). Treat the quiet run as the cost and the others as
+what sharing does. Most of it is the pool, which costs the same at any
 raster: about 150 passes a frame. The substeps follow the drive: at the ceiling with
 Hysteresis 2 and Saturation 0.35 the plan wants more than its cap of 48, and the pool then
 runs at 70% of real time (the dropped time is logged). The cost there wasn't benched.
