@@ -57,6 +57,8 @@ field approximation, the substep planner, the pool's size, or the FFT.
 - `FETEST_RENDERER=software` runs any of it on Apple's software renderer (slow:
   verify runs only fft, mirror, fresnel and state there).
 - `FETEST_TRACE=1` with `--hysteresis` prints each sweep's amplitudes.
+- The derived-stress prototype (not shipped): `tools/research/ferrohydro/`, numpy only;
+  `python3 -I checks.py` there reproduces AGENTS.md's numbers.
 
 ## Notes
 - **The state is spectral.** `state` holds (h_k, v_k) per mode. A substep is the

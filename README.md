@@ -95,14 +95,14 @@ None of this is drawn. It's the fluid doing what it does.
 | **Drive** | Fire On (Off, Beat, Half Beat, 2 Beats, Bar, Onset), Fire (a pulse now), Audio (Resolume's audio input), Band (Low, Mid, High, Full), Gain and Bias (0–1.5 critical currents), Coil Lag (L/R, 1–300 ms), Threshold (how hard an onset must hit), Pulse (10 ms–1 s). |
 | **Magnet** | Magnet (Uniform, Coil, Three Coils), Coil Size (the solenoid's radius, 5 mm–8 cm), Coil Spread (Three Coils' triangle, 2–30 cm a side). |
 | **Fluid** | Fluid (EFH1, EMG 901, EMG 909), Hysteresis (0–2), Saturation (0.35–8), Viscosity (0.25–100× the datasheet's), Noise (the floor the spikes grow from: 0, then 1 µPa–0.1 Pa), Settle (flatten the pool). |
-| **View** | Field Width (2–40 cm), Tilt (0–60°), Height (the Over's screen above the pool, 2 cm–1 m), Exposure (±4 stops), Lights (source: Soft Box, Two Boxes, Strips, Backlight, Window, Neon), Backdrop (source: Black, Studio), Mix (Over). |
+| **View** | Field Width (2–40 cm), Tilt (0–60°), Height (the Over's screen above the pool, 2 cm–1 m), Exposure (±4 stops), Lights (source: Soft Box, Two Boxes, Strips, Backlight, Window, Neon, Rim), Backdrop (source: Black, Studio), Mix (Over). |
 
 **Bias and Gain are in critical currents**, not amps: 1 is where the pool goes unstable,
 whatever the fluid and the magnet. The amps behind it are in Status.
 
 The source's defaults are EFH1 over one coil of 4 cm radius, biased at 0.98 of the
 critical current and kicked by 0.2 on every beat for 150 ms, through a 40 ms coil, seen
-from 35° across a 10 cm field under three strip lights. The Over's are the same pool in
+from 35° across a 10 cm field under rim lights. The Over's are the same pool in
 the Helmholtz pair, seen from straight above, with the clip on a screen 4 cm up.
 
 ## Status
@@ -186,6 +186,15 @@ AGENTS.md.
 Also assumed rather than measured: the field each point feels is the local one (the local
 approximation, normal component only); the fluid's optical constants (magnetite in oil,
 mixed by Maxwell Garnett); a deep layer; and the coils' hardware.
+
+**The spikes are domes, and that's the chosen stress.** At review I tried deriving the
+stress from the magnetostatics instead (Craig and Sulem's operator series, the full
+curvature, the Langevin curve), in a CPU prototype under `tools/research/`. Third order
+gives conical spikes but only under many times the fluid's real damping, and runs away
+without it. The variational quartic version matches Gollwitzer et al.'s measured
+amplitudes for their fluid to within 4 to 17% between ε 0.1 and 0.44, but runs away for EFH1 at
+any drive. Real spikes are held by the magnetisation saturating inside the tip, which only
+a full nonlinear field solve carries. AGENTS.md has the numbers.
 
 There's no user guide, no browser demo, no OpenFX port, no video and no presets yet.
 

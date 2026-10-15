@@ -123,6 +123,7 @@ enum class Lights
 	Backlight,  ///< a wide low panel beyond the pool: bright rims
 	Window,     ///< a warm four-pane window
 	Neon,       ///< a magenta and a cyan strip
+	Rim,        ///< two strips low beyond each side and a faint fill: a line down every flank
 	Count
 };
 

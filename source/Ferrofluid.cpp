@@ -921,6 +921,15 @@ void FerrofluidPlugin::render( const FFGLTextureStruct* input, const GLint* host
 	case Lights::Neon:
 		boxes = { { -2.4, -1.2, 0.6, 0.08, 0.7, 1.0f, 0.12f, 0.75f }, { 2.4, -1.2, 0.6, 0.08, 0.7, 0.1f, 0.85f, 1.0f } };
 		break;
+	case Lights::Rim:
+		//The product photographer's rim light: two tall strips low on either
+		//side and a little beyond the pool, so every spike's side flanks, seen
+		//nearly edge on, mirror them as a thin line down each side; and a dim
+		//overhead fill so the near flanks are not pure black.
+		boxes = { { -3.0, 0.6, 0.4, 0.12, 0.9, 1.0f, 1.0f, 1.0f },
+			      { 3.0, 0.6, 0.4, 0.12, 0.9, 1.0f, 1.0f, 1.0f },
+			      { 0.0, -2.5, 2.0, 1.5, 0.8, 0.05f, 0.05f, 0.05f } };
+		break;
 	default: break;
 	}
 	float centre[ 12 ] = {}, uvec[ 12 ] = {}, vvec[ 12 ] = {}, radiance[ 12 ] = {};

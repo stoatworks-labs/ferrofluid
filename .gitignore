@@ -11,3 +11,7 @@
 /.vscode/
 *.xcodeproj/xcuserdata/
 /build-*/
+
+# The research scripts write their states and bytecode next to themselves
+__pycache__/
+tools/research/**/*.npy

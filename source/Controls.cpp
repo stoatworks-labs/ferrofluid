@@ -47,7 +47,7 @@ const char* const kFireOnNames[]   = { "Off", "Beat", "Half Beat", "2 Beats", "B
 const char* const kBandNames[]     = { "Low", "Mid", "High", "Full" };
 const char* const kMagnetNames[]   = { "Uniform", "Coil", "Three Coils" };
 const char* const kFluidNames[]    = { "EFH1", "EMG 901", "EMG 909" };
-const char* const kLightsNames[]   = { "Soft Box", "Two Boxes", "Strips", "Backlight", "Window", "Neon" };
+const char* const kLightsNames[]   = { "Soft Box", "Two Boxes", "Strips", "Backlight", "Window", "Neon", "Rim" };
 const char* const kBackdropNames[] = { "Black", "Studio" };
 
 ControlInfo standard( unsigned int id, const char* name, const char* group, float value )
@@ -66,7 +66,7 @@ ControlInfo event( unsigned int id, const char* name, const char* group )
 //---------------------------------------------------------------------------
 // The defaults: a 10 cm field of EFH1 over one solenoid of 4 cm radius,
 // biased inside the hysteresis loop just under onset and kicked past it on
-// every beat; the source seen from 35 degrees under three strip lights. See
+// every beat; the source seen from 35 degrees under rim lights. See
 // AGENTS.md ("Decisions") for how they were chosen.
 //---------------------------------------------------------------------------
 const ControlInfo kTable[] = {
@@ -95,7 +95,7 @@ const ControlInfo kTable[] = {
 	standard( PT_TILT, "Tilt", "View", ParamFromTilt( 35.0 * kPi / 180.0 ) ),
 	standard( PT_HEIGHT, "Height", "View", ParamFromHeight( 0.04 ) ),
 	standard( PT_EXPOSURE, "Exposure", "View", ParamFromExposure( 0.0 ) ),
-	option( PT_LIGHTS, "Lights", "View", 2.0f, kLightsNames, static_cast< int >( Lights::Count ) ),
+	option( PT_LIGHTS, "Lights", "View", 6.0f, kLightsNames, static_cast< int >( Lights::Count ) ),
 	option( PT_BACKDROP, "Backdrop", "View", 1.0f, kBackdropNames, static_cast< int >( Backdrop::Count ) ),
 	standard( PT_MIX, "Mix", "View", 1.0f ),
 };

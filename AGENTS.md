@@ -93,9 +93,12 @@ drawn. So the plugins are the whole chain:
 - **The Over's alpha is mix(clip alpha, 1, Mix).** A wet frame is a picture of a pool, which
   is opaque wherever the clip was transparent; Mix 0 gives the clip back bit for bit,
   alpha included (fetched with `texelFetch`, never filtered).
-- **The source's studio**: six Lights presets (Soft Box, Two Boxes, Strips, Backlight,
-  Window, Neon) and a Backdrop (Black or Studio, a seamless sweep that dims towards the
-  floor). The spec asked for count, size and colour; presets kept it near 25 controls.
+- **The source's studio**: seven Lights presets (Soft Box, Two Boxes, Strips, Backlight,
+  Window, Neon, Rim) and a Backdrop (Black or Studio, a seamless sweep that dims towards
+  the floor). The spec asked for count, size and colour; presets kept it near 25 controls.
+  Rim is the default (added 2026-10-15 at review): two tall strips low on either side and a
+  little beyond the pool, and a dim overhead fill, so each spike's side flanks, seen nearly
+  edge on, carry a thin line of light, as in product photographs of ferrofluid.
 - **Exposure is 2^stops / R0**: 0 stops shows a diffuser of radiance 1 seen in a flat pool
   at normal incidence as 1. A black mirror reflects 4.5%, so without the R0 the picture is
   nearly black.
@@ -120,6 +123,62 @@ drawn. So the plugins are the whole chain:
   and `ATTRIBUTIONS.md`. The project isn't registered in stoatworks-backend, so
   `sync-about.py` and `sync-attributions.py` can't generate them yet.
 - **Not built**: a user guide, a browser demo, an OpenFX port, presets, a video.
+
+## The derived stress, tried (2026-10-15)
+
+The review asked for the chosen stress to be replaced by one derived from the
+magnetostatics: Craig & Sulem's Dirichlet–Neumann series on both sides of the interface,
+the full curvature, and Langevin saturation. I did it in a CPU prototype,
+`tools/research/ferrohydro/` (numpy, double; `checks.py` reproduces the numbers below). It
+isn't shipped, and this is why.
+
+- **The formulation.** Fluid below, air above. The trace ξ of the perturbation potential
+  on the surface solves (G(−h) + r0 G(sh)) ξ = −M0 G(−h) h. The fluid is linearised about
+  the flat state: μ_t along the field, μ_c across it, and the stretch s = √(μ_c/μ_t) turns
+  its anisotropic Laplace equation into an isotropic one with the same r0 that
+  Cowley–Rosensweig carry. The surface field follows from ξ and G(sh)ξ, and the stress
+  μ0∫M dH + μ0 M_n²/2 from that field with the full Langevin curve. Its linear part is
+  exactly G|D|h with the Cowley–Rosensweig G.
+- **The exact operator, for ridges.** A Cauchy integral gives the exact DtN of a 1D
+  surface (1.7e-13 against a harmonic function's own normal derivative). Against it, the
+  series' stress at third order is off by 1.2% at ka 0.5, 3.8% at 0.7 and 8.9% at 0.9 for
+  a single cosine. Exact EFH1 ridges sharpen fast: at ka 0.7 the crest's radius is 0.06 λ
+  (0.23 λ for the cosine); third order gets 0.08 λ.
+- **Third order, perturbative** (ξ to third order, the stress evaluated exactly from it).
+  The shape is right: EFH1 hexagons at m 1.1 have straight conical flanks, a tip radius of
+  0.89 mm (0.09 λ), 0.53 λ from peak to trough and 2.4 times the flat field at the tip.
+  But it only gets there under 25 to 75 times the fluid's own damping. With EFH1's real
+  viscosity it runs away even at m 1.05 (after 3 s), and at m 1.45 or more it runs away
+  whatever the damping. Truncated, it isn't the gradient of an energy any more: at the
+  spike its Jacobian's antisymmetric part is 0.61 of its symmetric part (2e-4 at a 4 µm
+  pattern), and a stress that isn't a gradient can feed a damped pool. It also needs the
+  surface low-passed (4 k_c) before the series, or the terms with k h ≫ 1 blow up within
+  a millisecond.
+- **Variational, quartic.** The magnetic energy is exactly −μ0 J*, J* = min over ξ of
+  ½⟨ξ + M0 h, G(−h)(ξ + M0 h)⟩ + ½ r0⟨ξ, G(sh) ξ⟩: its gradient matches the exact
+  stress of a linear medium to the finite differences' 4.5e-4. Expanded to quartic order
+  (`quartic.py`: three coefficients, all from G, r0 and s) it matches the exact J* with an
+  error of fifth order or better, and the stress it gives can't pump energy. For APG512a,
+  Gollwitzer et al.'s fluid (χ0 1.17), it settles with the fluid's own viscosity and puts
+  the pattern's amplitude at +4.2% of their fit at ε 0.1, −3.8% at 0.2, −9.8% at 0.3,
+  −12.4% at 0.35 and −16.6% at 0.44; it collapses between ε −0.02 and −0.03 from 1.2 mm
+  (they measured about −0.02, their finite elements −0.007, from about 1 mm). But it runs
+  away for EFH1 at every m tried (1.05 to 2.5), and for EMG 909, EMG 901 and APG512a
+  above m 1.2 to 1.5. That matches Gollwitzer et al. and Friedrichs & Engel: the weakly
+  nonlinear expansion holds up to χ0 of about 1.05.
+- **What stops a real spike** is the magnetisation saturating inside the fluid near its
+  tip, which no linear DtN operator carries; Gollwitzer et al. found the measured
+  magnetisation curve essential. That needs the full nonlinear magnetostatics, which they
+  solved by finite elements (400 000 unknowns for one cell, offline). A spectral method
+  can't carry it. A body-fitted 3D multigrid on the GPU might, at several milliseconds
+  per V-cycle on half the pool and a cycle per substep. Not attempted.
+- **The petals** round each dome in the hero are the neighbours' reflections, not the
+  surface: the height's azimuthal harmonics of order 3 and up stay under 0.2% of a spike's
+  height (order 6 at 0.3 λ: 0.007 mm of 0.96), and with the second bounce switched off the
+  petals vanish. On a dome six neighbours fill a wide angle; on a cone they'd be slivers.
+  The fix is the shape, not the renderer.
+
+So the shipped stress is still the chosen one, and the domes are still its domes.
 
 ## The traps actually hit
 
@@ -310,6 +369,13 @@ its context exists:
 
 ## Open questions
 
+- **The spikes' shape** (the derived stress, above). The routes I can see: the full
+  nonlinear magnetostatics on the GPU (a body-fitted 3D multigrid; real time is
+  doubtful); exact spike shapes solved offline, by finite elements, per fluid and field,
+  with the pool's pattern driving them; the variational quartic model for a low-χ fluid
+  near onset only (dropping EFH1 and capping the drive near m 1.2), which would look like
+  Gollwitzer's photographs and not like a hobbyist's; or the chosen model as it is. Allan's
+  call, not mine.
 - **Rolls over a coil past onset** (the traps). Whether a derived (Gailitis/Friedrichs–Engel)
   stress, or the tangential field, would give hexagons there is the first thing to try.
 - **The derived coefficients.** The spike's height and the loop's width are the model's.

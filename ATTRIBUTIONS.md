@@ -112,6 +112,19 @@ Named because they are what the nonlinear stress should have been derived from, 
 wasn't. The model's quadratic and cubic stress (`source/Fluid.h`) are chosen constants,
 exposed as Hysteresis and Saturation; AGENTS.md says why and what that costs.
 
+### The Dirichlet–Neumann operator series — W. Craig and C. Sulem, J. Comput. Phys. 108 (1993) 73
+
+The series G(h) = G_0 + G_1 + G_2 + ... and its recursion, used in the derived-stress
+prototype under `tools/research/ferrohydro/` (not shipped; AGENTS.md says why), on both
+sides of the interface.
+
+### The measured surface of a magnetic fluid — C. Gollwitzer, G. Matthies, R. Richter, I. Rehberg and L. Tobiska, J. Fluid Mech. 571 (2007) 455
+
+Their fluid's properties (APG512a, table 1) and the fit of their measured pattern
+amplitudes (eq. 4.1), against which the prototype's quartic model was compared; and their
+finding that the measured magnetisation curve is essential and the weakly nonlinear
+expansion fails above χ0 of about 1.05. Read from the arXiv preprint nlin/0604009.
+
 ### The Langevin magnetisation — Paul Langevin
 
 M(H) = Ms L(3χH/Ms), L(x) = coth x − 1/x, in `source/Fluid.cpp`, with its series below
