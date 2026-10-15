@@ -285,6 +285,8 @@ int runCues( const Perturb& perturb )
 	return Verdict();
 }
 
+#include "physics.inc"
+
 //===========================================================================
 // The registry.
 //===========================================================================
@@ -295,14 +297,24 @@ struct CheckEntry
 	bool offline;///< needs no GL context
 };
 
-int runCoil( const Perturb& perturb );
-int runBeat( const Perturb& perturb );
-int runOnsetClosed( const Perturb& perturb );
-
 const std::vector< CheckEntry >& checks()
 {
 	static const std::vector< CheckEntry > list = {
 		{ "fft", runFFT, false },
+		{ "dispersion", runDispersion, false },
+		{ "onset", runOnset, false },
+		{ "wavelength", runWavelength, false },
+		{ "hexagons", runHexagons, false },
+		{ "hysteresis", runHysteresis, false },
+		{ "coil", runCoil, true },
+		{ "spread", runSpread, false },
+		{ "mirror", runMirror, false },
+		{ "fresnel", runFresnel, false },
+		{ "beat", runBeat, true },
+		{ "audio", runAudio, false },
+		{ "resize", runResize, false },
+		{ "state", runState, false },
+		{ "extremes", runExtremes, false },
 		{ "names", runNames, true },
 		{ "cues", runCues, true },
 	};
@@ -335,6 +347,23 @@ int runNegative( bool offlineOnly = false )
 		set( p );
 		cases.push_back( { name, fn, p, what } );
 	};
+	using namespace shaders;
+	add( "dispersion", runDispersion, "the evolve without surface tension", []( Perturb& p ) { p.hooks = kHookNoTension; } );
+	add( "dispersion", runDispersion, "G without its r0 / ( 1 + r0 )", []( Perturb& p ) { p.physicsHooks = physics::kHookNoR0Factor; } );
+	add( "dispersion", runDispersion, "r0 from the chord permeability alone", []( Perturb& p ) { p.physicsHooks = physics::kHookChordOnly; } );
+	add( "onset", runOnset, "the demagnetising jump forgotten: H_in = H_a", []( Perturb& p ) { p.physicsHooks = physics::kHookNoDemag; } );
+	add( "wavelength", runWavelength, "the evolve without surface tension", []( Perturb& p ) { p.hooks = kHookNoTension; } );
+	add( "hexagons", runHexagons, "no quadratic term (Hysteresis 0): up/down symmetric", []( Perturb& p ) { p.hyScale = 0.0; } );
+	add( "hysteresis", runHysteresis, "no quadratic term (Hysteresis 0): a supercritical onset", []( Perturb& p ) { p.hyScale = 0.0; } );
+	add( "coil", runCoil, "the L/R lag stepped by forward Euler", []( Perturb& p ) { p.driveHooks = kHookEulerLag; } );
+	add( "coil", runCoil, "the on-axis field used at every radius", []( Perturb& p ) { p.coilHooks = coil::kHookOnAxisEverywhere; } );
+	add( "spread", runSpread, "the local field dropped: the pool sees G_ref everywhere", []( Perturb& p ) { p.hooks = kHookNoLocalField; } );
+	add( "mirror", runMirror, "the screen read unmirrored", []( Perturb& p ) { p.hooks = kHookFlipScreen; } );
+	add( "fresnel", runFresnel, "the s-polarised reflectance alone", []( Perturb& p ) { p.hooks = kHookSPolarised; } );
+	add( "beat", runBeat, "a beat fires at its frame's start", []( Perturb& p ) { p.driveHooks = kHookBeatAtFrameStart; } );
+	add( "audio", runAudio, "the analyser never primed", []( Perturb& p ) { p.unprimed = true; } );
+	add( "resize", runResize, "a new raster flattens the pool", []( Perturb& p ) { p.resizeClears = true; } );
+	add( "extremes", runExtremes, "the substep three times what the plan allows", []( Perturb& p ) { p.substepScale = 3.0; } );
 	add( "cues", runCues, "ramp every control between keys", []( Perturb& p ) { p.cuesRamp = true; } );
 
 	if( offlineOnly )

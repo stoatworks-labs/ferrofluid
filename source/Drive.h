@@ -70,7 +70,10 @@ class Drive
 public:
 	static constexpr int kMaxCoils = 3;
 	/// The highest current the drive will ask for, in units of the critical one.
-	static constexpr double kMaxCurrent = 4.0;
+	/// 1.6 I_c is m ~ 2.4 for EFH1, where the fastest-growing wavelength is
+	/// already a third of lambda_c and the grid's 12 cells a lambda_c are four
+	/// of it: past that the pool would be asked for spikes it cannot draw.
+	static constexpr double kMaxCurrent = 1.6;
 	/// The most beat boundaries one frame may fire (more is a seek, not music).
 	static constexpr int kMaxBeatsPerFrame = 8;
 

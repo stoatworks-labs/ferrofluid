@@ -42,6 +42,7 @@ struct Plan
 	double stressRef  = 0.0;///< G_ref, Pa
 	double stressMax  = 0.0;///< the largest G on the pool this frame, Pa
 	double growthMax  = 0.0;///< the fastest linear growth rate, 1/s
+	double outerCut   = 3.0;///< the model's stress is low-passed above this many k_c
 };
 
 /**
@@ -250,12 +251,12 @@ private:
 	struct Key
 	{
 		int fluid = -1, magnet = -1;
-		float coilSize = -1.0f;
+		float coilSize = -1.0f, spread = -1.0f;
 		int physicsHooks = -1, coilHooks = -1;
 		double lx = -1.0;
 		bool operator==( const Key& o ) const
 		{
-			return fluid == o.fluid && magnet == o.magnet && coilSize == o.coilSize && physicsHooks == o.physicsHooks
+			return fluid == o.fluid && magnet == o.magnet && coilSize == o.coilSize && spread == o.spread && physicsHooks == o.physicsHooks
 			       && coilHooks == o.coilHooks && lx == o.lx;
 		}
 	};

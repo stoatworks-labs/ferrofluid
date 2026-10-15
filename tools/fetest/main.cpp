@@ -820,7 +820,8 @@ struct Perturb
 	bool resizeClears = false;
 	bool unprimed     = false;
 	bool cuesRamp     = false;
-	double hyScale    = -1.0;///< --hysteresis's negative: the quadratic coefficient forced to this
+	double hyScale    = -1.0;///< the model's Hy forced to this (--hysteresis's and --hexagons' negative: 0)
+	double substepScale = 1.0;///< the planned substep times this (--extremes' negative)
 };
 
 using CheckFn = int ( * )( const Perturb& );

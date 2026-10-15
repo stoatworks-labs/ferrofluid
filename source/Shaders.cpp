@@ -173,7 +173,7 @@ void main()
 	{
 		//The stress came through the transform as ( outer + i plain ): two
 		//real fields, unpacked by Hermitian symmetry. The outer part takes
-		//its D = |k| / k_c here.
+		//its W = max( k, k_c ) / k_c here.
 		ivec2 opposite = ivec2( ( GridSize.x - cell.x ) % GridSize.x, ( GridSize.y - cell.y ) % GridSize.y );
 		vec2 z         = texelFetch( Force, cell, 0 ).xy;
 		vec2 zm        = texelFetch( Force, opposite, 0 ).xy;
@@ -187,7 +187,7 @@ void main()
 		float s        = k / OuterCut;
 		float s2       = s * s;
 		float s4       = s2 * s2;
-		v += Dt * k * InvRho * ( exp( -s4 * s4 ) * k / Kc * outer + exp( -r4 * r4 ) * plain );
+		v += Dt * k * InvRho * ( exp( -s4 * s4 ) * max( k, Kc ) / Kc * outer + exp( -r4 * r4 ) * plain );
 	}
 
 	//Cowley & Rosensweig: rho omega^2 = rho g k + sigma k^3 - G k^2.
@@ -240,10 +240,12 @@ void main()
 
 	stateOut = vec4( h2, v2 );
 
-	//The next substep's inverse: h + i |grad| h, two real fields in one
-	//complex transform ( A + i B ).
+	//The next substep's inverse: W h + i |grad| h, two real fields in one
+	//complex transform ( A + i B ). W = max( k, k_c ): the model's stress is
+	//written in W h (Fluid.h), the local field's residual in |grad| h.
+	vec2 a  = max( k, Kc ) * h2;
 	vec2 b  = k * h2;
-	packOut = Norm * vec4( h2.x - b.y, h2.y + b.x, 0.0, 0.0 );
+	packOut = Norm * vec4( a.x - b.y, a.y + b.x, 0.0, 0.0 );
 }
 )";
 
@@ -251,7 +253,7 @@ void main()
 // force: the normal stress on the surface, in real space.
 //---------------------------------------------------------------------------
 const char* const kForceFragment = R"(
-uniform sampler2D Real;      //( h, |grad| h ): metres, dimensionless
+uniform sampler2D Real;      //( W h, |grad| h ): dimensionless both
 uniform sampler2D CoilTable; //H_z per amp at the surface, from rho = 0 to RhoMax
 uniform sampler2D FluidTable;//G from H_a = 0 to FieldMax
 uniform ivec2 GridSize;
@@ -294,7 +296,6 @@ void main()
 {
 	ivec2 cell = ivec2( gl_FragCoord.xy );
 	vec2 real  = texelFetch( Real, cell, 0 ).xy;
-	float h    = real.x;
 
 	//The local field. Uniform: the spectral step carries all of it. A coil:
 	//the normal field it makes at this point (the sum over the coils), and the
@@ -313,12 +314,12 @@ void main()
 		stress = lookup( FluidTable, field / FieldMax );
 	}
 
-	//The model's stress (Fluid.h): N = ( rho g / k_c ) D[ m ( Hy g^2 - Sa g^3 ) ],
-	//g = |grad| h, D = |grad| / k_c. The bracket is computed here; the D is
-	//applied to its spectrum in the evolve, which is why it travels in .x and
-	//the stress that is NOT differentiated travels in .y.
+	//The model's stress (Fluid.h): N = ( rho g / k_c ) W[ m ( Hy g^2 - Sa g^3 ) ],
+	//g = W h, W = max( |grad|, k_c ) / k_c. The bracket is computed here; the
+	//W is applied to its spectrum in the evolve, which is why it travels in .x
+	//and the stress that is NOT weighted travels in .y.
 	float m     = stress * Kc / ( 2.0 * RhoG );
-	float g     = real.y;
+	float g     = real.x;
 	float outer = RhoG / Kc * m * g * g * ( Hy - Sa * g );
 
 	//The local approximation: the magnetic drive here is this point's G, and
@@ -567,7 +568,10 @@ void main()
 {
 	vec2 frag = gl_FragCoord.xy - vec2( Viewport.xy );
 	vec2 uv   = frag / vec2( Viewport.zw );
-	vec4 clip = IsOver != 0 ? texture( InputTexture, uv * MaxUV ) : vec4( 0.0, 0.0, 0.0, 1.0 );
+	//The dry clip is the pixel itself, fetched, not filtered: Mix 0 is the
+	//clip bit for bit on every rasteriser (the software renderer's bilinear
+	//weights are not exact at a texel's centre).
+	vec4 clip = IsOver != 0 ? texelFetch( InputTexture, ivec2( frag ), 0 ) : vec4( 0.0, 0.0, 0.0, 1.0 );
 	if( IsOver != 0 && MixAmount <= 0.0 )
 	{
 		fragColor = clip;

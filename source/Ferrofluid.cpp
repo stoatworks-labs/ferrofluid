@@ -28,10 +28,14 @@ constexpr double kMaxFrameDelta = 0.1;
 constexpr int kPoolX = 512, kPoolY = 256;
 constexpr double kCellsPerWavelength = 12.0;
 /// The stress is low-passed above this many k_c (the evolve's ForceCut), and
-/// its D-weighted part above kOuterCut: that part's stiffness grows as q^3,
-/// and the harmonics that shape a spike (sqrt 3 and 2 k_c) are well inside.
-constexpr double kForceCut = 4.0;
-constexpr double kOuterCut = 3.0;
+/// the model's W-weighted part above the plan's outerCut: that part's
+/// stiffness grows as q^3, so it is cut as low as is safe -- never below 3 k_c
+/// (the harmonics that shape a spike, sqrt 3 and 2 k_c, are well inside), and
+/// never below the top of the band the frame's strongest field makes
+/// unstable, m + sqrt( m^2 - 1 ): a mode that grows must be one the
+/// saturation can hold, or it grows without end (`fetest --extremes`).
+constexpr double kForceCut  = 4.0;
+constexpr double kOuterCutMin = 3.0;
 /// Substeps a frame may run; past it the pool falls behind real time.
 constexpr int kMaxSubsteps = 48;
 /// The longest substep, s, whatever the plan allows.
@@ -146,10 +150,14 @@ FerrofluidPlugin::FerrofluidPlugin( bool effect ) :
 
 	for( unsigned int id = 0; id < PT_ABOUT_TEXT; ++id )
 		params[ id ] = InfoOf( id ).defaultValue;
-	//The Over looks straight down at the clip's reflection; the source from
-	//the photographer's angle.
+	//The Over looks straight down at the clip's reflection across the whole
+	//pool (a Helmholtz pair); the source from the photographer's angle at the
+	//patch of spikes one coil makes.
 	if( isEffect )
-		params[ PT_TILT ] = 0.0f;
+	{
+		params[ PT_TILT ]   = 0.0f;
+		params[ PT_MAGNET ] = static_cast< float >( Magnet::Uniform );
+	}
 
 	for( unsigned int host = 0; host < hostOrder.size(); ++host )
 	{
@@ -378,6 +386,7 @@ void FerrofluidPlugin::updateTables()
 	key.fluid        = OptionIndex( params[ PT_FLUID ], 3 );
 	key.magnet       = static_cast< int >( CurrentMagnet() );
 	key.coilSize     = params[ PT_COIL_SIZE ];
+	key.spread       = CurrentMagnet() == Magnet::ThreeCoils ? params[ PT_COIL_SPREAD ] : -1.0f;
 	key.physicsHooks = physicsHooks;
 	key.coilHooks    = coilHooks;
 	key.lx           = pool.lx;
@@ -395,8 +404,34 @@ void FerrofluidPlugin::updateTables()
 	coilTableData.assign( shaders::kTableSize, 0.0f );
 	coil::SolenoidProfile( radius, rhoMax, shaders::kTableSize, coilTableData.data(), coilHooks );
 
-	//The critical current: what puts the pool's strongest point at onset.
-	centreField     = CurrentMagnet() == Magnet::Uniform ? coil::HelmholtzField() : coil::SolenoidAxial( radius, 0.0 );
+	//The critical current: what puts the pool's strongest point at onset. For
+	//three coils, all three at the same current: the strongest point of their
+	//summed field, found on a fine grid round the triangle.
+	if( CurrentMagnet() == Magnet::Uniform )
+		centreField = coil::HelmholtzField();
+	else if( CurrentMagnet() == Magnet::Coil )
+		centreField = coil::SolenoidAxial( radius, 0.0 );
+	else
+	{
+		const double side = SpreadFromParam( params[ PT_COIL_SPREAD ] ), R = side / std::sqrt( 3.0 );
+		const double cx[ 3 ] = { 0.0, -0.5 * side, 0.5 * side }, cy[ 3 ] = { R, -0.5 * R, -0.5 * R };
+		const double reach   = R + 2.0 * radius;
+		centreField          = 0.0;
+		for( int iy = -40; iy <= 40; ++iy )
+			for( int ix = -40; ix <= 40; ++ix )
+			{
+				const double px = reach * ix / 40.0, py = reach * iy / 40.0;
+				double field    = 0.0;
+				for( int j = 0; j < 3; ++j )
+				{
+					const double r = std::hypot( px - cx[ j ], py - cy[ j ] );
+					const double f = std::clamp( r / rhoMax, 0.0, 1.0 ) * ( shaders::kTableSize - 1 );
+					const int i0   = std::min( static_cast< int >( f ), shaders::kTableSize - 2 );
+					field += coilTableData[ i0 ] + ( f - i0 ) * ( coilTableData[ i0 + 1 ] - coilTableData[ i0 ] );
+				}
+				centreField = std::max( centreField, field );
+			}
+	}
 	criticalCurrent = criticalApplied / centreField;
 
 	//The fluid's G against the applied field, to past three coils at the
@@ -485,6 +520,9 @@ Plan FerrofluidPlugin::planSubsteps( double frameDt )
 	//pattern still growing). A mode at k feels ( k / rho ) ( rho g / k_c ) q^2
 	//times it, q = k / k_c.
 	const double mMax   = physics::MagneticNumber( fluid, out.stressMax );
+	const double nyquist = physics::kPi * std::min( pool.nx / pool.lx, pool.ny / pool.ly ) / kc;
+	const double bandTop = mMax > 1.0 ? mMax + std::sqrt( mMax * mMax - 1.0 ) : 1.0;
+	out.outerCut         = std::min( std::max( kOuterCutMin, bandTop + 0.5 ), 0.9 * nyquist );
 	const double x      = 1.2 * std::max( 1.0, model.hysteresis / std::max( model.saturation, 1e-6 ) );
 	const double nlRate = g * mMax * ( 2.0 * model.hysteresis * x + 3.0 * model.saturation * x * x );
 
@@ -498,7 +536,7 @@ Plan FerrofluidPlugin::planSubsteps( double frameDt )
 			const double r      = k / cut;
 			const double pass   = std::exp( -std::pow( r, 8.0 ) );
 			const double omega2 = g * k + sigmaR * k * k * k - out.stressRef / rho * k * k;
-			const double r3     = k / ( kOuterCut * kc );
+			const double r3     = k / ( out.outerCut * kc );
 			const double outer  = std::exp( -std::pow( r3, 8.0 ) );
 			const double kappa  = residual * k * k / rho * pass + nlRate * k * ( k / kc ) * ( k / kc ) * outer;
 			double c, s;//cos and sin( omega dt ) / omega, or the hyperbolic pair
@@ -694,7 +732,7 @@ void FerrofluidPlugin::substep( double t, double dt, const Plan& p )
 		const double cut = std::min( kForceCut * kc, 0.67 * physics::kPi * std::min( pool.nx / pool.lx, pool.ny / pool.ly ) );
 		uniform( evolveShader, "ForceCut", static_cast< float >( cut ) );
 		uniform( evolveShader, "Kc", static_cast< float >( kc ) );
-		uniform( evolveShader, "OuterCut", static_cast< float >( kOuterCut * kc ) );
+		uniform( evolveShader, "OuterCut", static_cast< float >( p.outerCut * kc ) );
 		uniform( evolveShader, "Norm", static_cast< float >( 1.0 / ( static_cast< double >( pool.nx ) * pool.ny ) ) );
 		uniform( evolveShader, "Hooks", hooks );
 		quad.Draw();

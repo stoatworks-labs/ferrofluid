@@ -29,13 +29,13 @@ float inverseLinear( double value, double low, double high )
 	return static_cast< float >( std::clamp( ( value - low ) / ( high - low ), 0.0, 1.0 ) );
 }
 
-constexpr double kCurrentHigh = 2.0;
+constexpr double kCurrentHigh = 1.5;
 constexpr double kLagLow = 1e-3, kLagHigh = 0.3;
 constexpr double kPulseLow = 0.01, kPulseHigh = 1.0;
 constexpr double kCoilLow = 0.005, kCoilHigh = 0.08;
 constexpr double kSpreadLow = 0.02, kSpreadHigh = 0.30;
-constexpr double kHyHigh = 4.0;
-constexpr double kSaLow = 0.5, kSaHigh = 8.0;
+constexpr double kHyHigh = 2.0;
+constexpr double kSaLow = 0.35, kSaHigh = 8.0;
 constexpr double kViscLow = 0.25, kViscHigh = 100.0;
 constexpr double kNoiseLow = 1e-6, kNoiseHigh = 1e-1;
 constexpr double kFieldLow = 0.02, kFieldHigh = 0.40;
@@ -84,15 +84,15 @@ const ControlInfo kTable[] = {
 	standard( PT_COIL_SPREAD, "Coil Spread", "Magnet", ParamFromSpread( 0.08 ) ),
 
 	option( PT_FLUID, "Fluid", "Fluid", 0.0f, kFluidNames, 3 ),
-	standard( PT_HYSTERESIS, "Hysteresis", "Fluid", ParamFromHysteresis( 2.0 ) ),
-	standard( PT_SATURATION, "Saturation", "Fluid", ParamFromSaturation( 0.7 ) ),
+	standard( PT_HYSTERESIS, "Hysteresis", "Fluid", ParamFromHysteresis( 1.0 ) ),
+	standard( PT_SATURATION, "Saturation", "Fluid", ParamFromSaturation( 0.5 ) ),
 	standard( PT_VISCOSITY, "Viscosity", "Fluid", ParamFromViscosity( 1.0 ) ),
 	standard( PT_NOISE, "Noise", "Fluid", ParamFromNoise( 1e-3 ) ),
 	event( PT_SETTLE, "Settle", "Fluid" ),
 
 	standard( PT_FIELD_WIDTH, "Field Width", "View", ParamFromFieldWidth( 0.10 ) ),
 	standard( PT_TILT, "Tilt", "View", ParamFromTilt( 35.0 * kPi / 180.0 ) ),
-	standard( PT_HEIGHT, "Height", "View", ParamFromHeight( 0.25 ) ),
+	standard( PT_HEIGHT, "Height", "View", ParamFromHeight( 0.04 ) ),
 	standard( PT_EXPOSURE, "Exposure", "View", ParamFromExposure( 0.0 ) ),
 	option( PT_LIGHTS, "Lights", "View", 2.0f, kLightsNames, static_cast< int >( Lights::Count ) ),
 	option( PT_BACKDROP, "Backdrop", "View", 1.0f, kBackdropNames, static_cast< int >( Backdrop::Count ) ),

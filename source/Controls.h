@@ -137,7 +137,7 @@ enum class Backdrop
 // The mappings. Each says its range and its shape.
 //---------------------------------------------------------------------------
 
-/// Gain and Bias: 0 to 2 critical currents, linearly.
+/// Gain and Bias: 0 to 1.5 critical currents, linearly.
 double CurrentFromParam( float value );
 float ParamFromCurrent( double multiple );
 
@@ -161,11 +161,11 @@ float ParamFromCoilSize( double metres );
 double SpreadFromParam( float value );
 float ParamFromSpread( double metres );
 
-/// Hysteresis: the model's Hy, 0 to 4, linearly.
+/// Hysteresis: the model's Hy, 0 to 2, linearly.
 double HysteresisFromParam( float value );
 float ParamFromHysteresis( double hy );
 
-/// Saturation: the model's Sa, 0.5 to 8, geometrically.
+/// Saturation: the model's Sa, 0.35 to 8, geometrically.
 double SaturationFromParam( float value );
 float ParamFromSaturation( double sa );
 

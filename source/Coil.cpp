@@ -65,8 +65,12 @@ void Elliptic( double m, double& K, double& E )
 		b               = std::sqrt( a * b );
 		a               = an;
 		power *= 2.0;
-		sum += power * c * c;
-		if( std::fabs( c ) < 1e-17 * a )
+		const double term = power * c * c;
+		sum += term;
+		//Stop on the TERM, not on c: a and b can end one ulp apart and stay
+		//there, and with the weight doubling every step that ulp squared adds
+		//1e-13 to E( 1/2 ) over 64 steps (`fetest --coil` caught it).
+		if( term <= 1e-17 * sum )
 			break;
 	}
 	K = kPi / ( 2.0 * a );
