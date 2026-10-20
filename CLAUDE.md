@@ -11,7 +11,8 @@ rendered as a black mirror. C++/GLSL, CMake MODULE → universal `.bundle`
 | the pool, reflecting the clip | `FE02` | `SW Ferro Over` | `Ferrofluid Over.bundle`, `com.stoatworks.ffgl.ferrofluid.over` | effect |
 
 Read `AGENTS.md` before touching the nonlinear stress (the W form), the local
-field approximation, the substep planner, the pool's size, or the FFT.
+field approximation, the substep planner, the pool's size, the FFT, or the solved
+spikes (`tools/spikes/`, `source/SpikeTable.cpp`, the spikes/deposit/combine passes).
 
 ## Commands (CMake)
 - Configure: `cmake -B build -DCMAKE_BUILD_TYPE=Release`
@@ -29,13 +30,29 @@ field approximation, the substep planner, the pool's size, or the FFT.
 - A clip through it: `ffmpeg -i in.mov -vf fps=60 -f rawvideo -pix_fmt rgba - | ./build/fetest --over --pipe --size WxH | ffmpeg …`
 - The summary line of `--out` gives the substeps, the current (in Ic and amps), m, max |h| and the steepest slope.
 
+## The solved spikes (`tools/spikes/`, numpy and scipy, double)
+- `source/SpikeTable.cpp` is GENERATED: never edit it. `python3 tools/spikes/generate.py`
+  solves every fluid's branch (`--stage solve`: the axisymmetric seed then the hexagonal
+  cell, hours on this Mac; `--stage hex` reuses the seed in `records/`) and writes the
+  table (`--stage table`: minutes, needs `build/fetest` for the calibration).
+- `python3 tools/spikes/check.py`: the table against its sources and records (byte for
+  byte), the records still solutions, the solver against Gollwitzer et al., the circle
+  against the hexagon. `verify.sh` runs it.
+- `python3 tools/spikes/convergence.py`: the table's records re-solved at other
+  resolutions (an hour or more); writes `records/convergence.json`.
+- One thread a worker: the scripts set `VECLIB_MAXIMUM_THREADS=1` (numpy and scipy
+  are on Accelerate here) and `OPENBLAS_NUM_THREADS=1`.
+- Never edit `generate.py`, `solver.py` or `branch.py` while a solve is running: the
+  workers are spawned processes and import the files as they are when they start.
+
 ## Verify
-- Everything: `tools/verify.sh` (about 11 minutes on this Mac: shader
-  hygiene, `glslc`, the submodule pin, a fresh universal build with no
-  warnings, both bundles through lipo, plist, ad-hoc signature, `oxbow probe`
-  and `selftest`; every GPU check at 1280x720 and 320x180; four of them again on
-  Apple's software renderer; `--offline`; `--pipe` for both; the negative
-  controls; 14 mutants; the sweep; the bench)
+- Everything: `tools/verify.sh` (shader hygiene, `glslc`, the submodule pin, a fresh
+  universal build with no warnings, both bundles through lipo, plist, ad-hoc signature,
+  `oxbow probe` and `selftest`; every GPU check at 1280x720 and 320x180; four of them
+  again on Apple's software renderer; `--offline`; `--pipe` for both; the spike table's
+  checks; the negative controls; 16 mutants; the sweep; the bench): 11 to 19 minutes on
+  this Mac, more when other builds share it. In a sandboxed Claude session set `TMPDIR`
+  to a writable scratch directory, or `glslc.sh` hangs on its heredoc.
 - **No GL** (`--offline` runs these and their negatives): `--coil` (the L/R lag,
   the AGM, a loop and the solenoid against Biot–Savart), `--beat` (a pulse
   starts on its beat, inside its frame), `--names`, `--cues`.
@@ -48,9 +65,14 @@ field approximation, the substep planner, the pool's size, or the FFT.
   finite and bounded).
 - **The light**: `--mirror` (the Over at R = 1 returns the clip to the pixel,
   mirrored), `--fresnel` (each pixel's reflectance over R0).
+- **The solved spikes**: `--spikes` (a lattice of the pool's spikes at equilibrium is
+  the table's cell, from the camera's height field and from the picture), `--blend`
+  (a spike part-grown is that share of the table's), `--coilspikes` (over a coil,
+  tallest on the axis; also reports rolls or hexagons), `--calibration` (no GL: the
+  pattern engine's fold and onset height are the solver's).
 - **The rest**: `--audio`, `--resize`, `--state`.
-- The checks can fail: `./build/fetest --negative` (17 wrong models),
-  `tools/mutate.sh` (14 mutants).
+- The checks can fail: `./build/fetest --negative` (21 wrong models),
+  `tools/mutate.sh` (16 mutants).
 - No dead controls: `python3 tools/sweep.py` (both plugins; `--bare` drops the
   contexts and lists the controls that need one).
 - Render cost: `./build/fetest --bench`; one transform alone: `--fftbench`.

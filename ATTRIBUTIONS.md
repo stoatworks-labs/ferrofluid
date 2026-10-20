@@ -81,6 +81,17 @@ Arrives inside the FFGL submodule, under the SDK's CustomThumbnail sample.
 
 Part of the upstream SDK tree rather than something these plugins call directly — listed because it is present in the checkout.
 
+### NumPy and SciPy
+
+<https://numpy.org>, <https://scipy.org>  
+Licence: BSD-3-Clause  
+Copyright: the NumPy and SciPy developers
+
+Used by the offline tools only, never shipped: `tools/spikes/` (the solver behind
+`source/SpikeTable.cpp`: FFTs, dense and sparse LU through SuperLU, splines) and the
+derived-stress prototype under `tools/research/`. Installed from Homebrew's Python, not
+vendored.
+
 ## Work checked against
 
 No code was taken from these — but they were how I knew I had it right, or where the
@@ -108,9 +119,10 @@ the 2010 sheet is used whole.
 
 ### The weakly nonlinear theory of the hexagons — A. Gailitis, J. Fluid Mech. 82 (1977) 401; R. Friedrichs and A. Engel, Phys. Rev. E 64 (2001) 021406
 
-Named because they are what the nonlinear stress should have been derived from, and
-wasn't. The model's quadratic and cubic stress (`source/Fluid.h`) are chosen constants,
-exposed as Hysteresis and Saturation; AGENTS.md says why and what that costs.
+Named because they are what the pattern engine's nonlinear stress should have been
+derived from, and wasn't. Its quadratic and cubic stress (`source/Fluid.h`) are a chosen
+form whose two constants are now fitted to the solved spikes (below) rather than derived;
+AGENTS.md says why and what that costs.
 
 ### The Dirichlet–Neumann operator series — W. Craig and C. Sulem, J. Comput. Phys. 108 (1993) 73
 
@@ -120,10 +132,14 @@ sides of the interface.
 
 ### The measured surface of a magnetic fluid — C. Gollwitzer, G. Matthies, R. Richter, I. Rehberg and L. Tobiska, J. Fluid Mech. 571 (2007) 455
 
-Their fluid's properties (APG512a, table 1) and the fit of their measured pattern
-amplitudes (eq. 4.1), against which the prototype's quartic model was compared; and their
-finding that the measured magnetisation curve is essential and the weakly nonlinear
-expansion fails above χ0 of about 1.05. Read from the arXiv preprint nlin/0604009.
+Their problem (section 3: the hexagonal cell, the full nonlinear magnetostatics with the
+measured magnetisation curve, gravity and surface tension) is the one `tools/spikes/`
+solves, by my own discretisation, not theirs. Their fluid's properties (APG512a, table 1),
+the fit of their measured pattern amplitudes (eq. 4.1) and the bistable range of their
+simulation and of their experiment are what `tools/spikes/check.py` holds the solver to.
+Their finding that the measured magnetisation curve is essential, and that the weakly
+nonlinear expansion fails above χ0 of about 1.05, is why the derived-stress prototype was
+dropped. Read from the arXiv preprint nlin/0604009.
 
 ### The Langevin magnetisation — Paul Langevin
 
