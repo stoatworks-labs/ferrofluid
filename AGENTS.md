@@ -173,12 +173,16 @@ fluid infinitely deep, a uniform applied field far above and below.
   Bounds and why in `check.py`.
 - **Convergence** (`convergence.py`, records/convergence.json). Re-solving the table's own
   records at nx 24 and 48 (the table's is 32), and at a vertical grid twice as fine at the
-  surface and graded more slowly. Run so far for APG512a only (2026-10-16, at its fold, mid
-  branch and top): the peak moved by at most 1.4e-4 at nx 24, 2.7e-5 at nx 48 and 1.7e-5 on
-  the finer vertical grid, the field by 4e-5 in u, and the tip radius by 0.8%, 0.25% and
-  3e-5. So that cell's peak is good to about 3e-5 and its tip radius, a curvature at a single
-  point, to about 0.25%. EFH1's run was started on 2026-10-20 and stopped unfinished; the
-  presets' own convergence is not measured.
+  surface and graded more slowly, at each fluid's fold, mid branch and top (2026-10-20,
+  5 h on 10 workers; all 36 converged). The vertical grid is converged: the peak moves by at
+  most 9e-5, the tip radius by 4e-5, the field by 1.6e-4 in u. The cell's harmonics are what
+  limit the sharp fluids. At nx 48 the peak rises by up to 0.27% (EFH1; 0.19% EMG 901, 9e-5
+  EMG 909, 3e-5 APG512a), most at the top of the branch: EFH1's at 1.566 I_c goes 11.91,
+  11.97, 12.00 mm at nx 24, 32, 48. The tip radius tightens by up to 8% (EFH1's there 0.195,
+  0.176, 0.161 mm) and 6% (EMG 901), and is still moving; EMG 909's and APG512a's by 1%. So
+  the table's peak is good to about 0.3% and low by that much, and the tips of EFH1 and
+  EMG 901, a curvature at a single point, are rounder than converged by 8% or more. The
+  camera rounds them further anyway (the shipped tip is the table's to 5%).
 - **The equal-area circle.** An axisymmetric cell of the same area (R = √(8π/√3)/k_c,
   `axisym.py`, finite elements, 200 radial nodes) is fast enough to trace each fluid's
   whole branch in minutes, so it seeds the hexagonal cell and nothing else. What it would

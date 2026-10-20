@@ -195,8 +195,10 @@ surface energy, along the whole branch: the unstable part, the fold, and the sta
 the top of the drive. It matches the fit to Gollwitzer et al.'s X-ray measurements of
 APG512a's pattern (J. Fluid Mech. 571, 2007) to within 1.1% in amplitude between ε 0.05 and
 0.44, jumps at onset to their 1.5 mm, and collapses on the down-sweep between their
-simulation's field and their experiment's. Re-solved at other
-resolutions, APG512a's peak moves by 3e-5 (the presets' own convergence wasn't run). The shipped table is checked against it at every solved
+simulation's field and their experiment's. Re-solved with half as many harmonics again,
+the presets' spikes come out up to 0.3% taller (EFH1 at the top of the drive), with tips up
+to 8% sharper and still sharpening: the table's peaks are good to about 0.3%, its sharpest
+tips are a little round. The shipped table is checked against the solver at every solved
 point, and against its own sources byte for byte.
 
 Not solved: where the spikes stand and how far they've grown. That's still the pool, a
