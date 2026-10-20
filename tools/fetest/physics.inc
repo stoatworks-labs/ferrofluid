@@ -1082,11 +1082,16 @@ int runExtremes( const Perturb& perturb )
 		for( double v : h )
 			finite = finite && std::isfinite( v );
 		//The model's own scale: its energy, local in W h, has its minimum at
-		//W h = Hy / Sa, and a spike stands about that tall over its trough.
-		//Half as much again is the bound; a blow-up is orders past it.
+		//W h = Hy / Sa, and a spike stands about that tall over its trough --
+		//near onset. Far past it the equilibrium grows with m (the fitted
+		//constants put EMG 901's at 3.7 / k_c at 1.5 I_c, against Hy / Sa 1.7),
+		//so the scale is the larger of the two. Half as much again is the
+		//bound; a blow-up is orders past it.
 		const double tallest = maxAbs( h );
 		const physics::Nonlinear model = rig.plugin.Model();
-		const double bound   = 1.5 * ( 1.0 + model.hysteresis / model.saturation ) / physics::CriticalWavenumber( rig.plugin.Fluid() );
+		const double mMax    = physics::MagneticNumber( rig.plugin.Fluid(), rig.plugin.LastPlan().stressMax );
+		const double scale   = std::max( 1.0 + model.hysteresis / model.saturation, physics::ThreeMode( model, mMax ).peak );
+		const double bound   = 1.5 * scale / physics::CriticalWavenumber( rig.plugin.Fluid() );
 		Check( finite && tallest < bound, fmt( "%s: tallest %.2f mm (bound %.1f mm), %d substeps of %.3f ms", corner.what, tallest * 1e3, bound * 1e3,
 		                                       rig.plugin.LastPlan().substeps, rig.plugin.LastPlan().dt * 1e3 ) );
 	}

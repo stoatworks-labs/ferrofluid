@@ -546,12 +546,14 @@ Plan FerrofluidPlugin::planSubsteps( double frameDt )
 	//at g = Hy / Sa: the bracket's slope m ( 2 Hy g - 3 Sa g^2 ) is m Hy^2 / Sa
 	//there and grows past it, so g is bounded at 1.5 Hy / Sa (and at 1, for a
 	//pattern still growing). A mode at k feels ( k / rho ) ( rho g / k_c ) q^2
-	//times it, q = k / k_c.
+	//times it, q = k / k_c. The plan took 1.2 until the constants were fitted:
+	//EMG 901's and 909's (Hy / Sa 1.7 and 0.6) then went to NaN at 1.5 I_c with
+	//a quarter of the viscosity and Noise at its top.
 	const double mMax   = physics::MagneticNumber( fluid, out.stressMax );
 	const double nyquist = physics::kPi * std::min( pool.nx / pool.lx, pool.ny / pool.ly ) / kc;
 	const double bandTop = mMax > 1.0 ? mMax + std::sqrt( mMax * mMax - 1.0 ) : 1.0;
 	out.outerCut         = std::min( std::max( kOuterCutMin, bandTop + 0.5 ), 0.9 * nyquist );
-	const double x      = 1.2 * std::max( 1.0, model.hysteresis / std::max( model.saturation, 1e-6 ) );
+	const double x      = 1.5 * std::max( 1.0, model.hysteresis / std::max( model.saturation, 1e-6 ) );
 	const double nlRate = g * mMax * ( 2.0 * model.hysteresis * x + 3.0 * model.saturation * x * x );
 
 	const double cut    = std::min( kForceCut * kc, 0.67 * physics::kPi * std::min( pool.nx / pool.lx, pool.ny / pool.ly ) );
