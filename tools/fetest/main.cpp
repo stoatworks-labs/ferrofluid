@@ -33,6 +33,7 @@
 #include "Ferrofluid.h"
 #include "Fluid.h"
 #include "Shaders.h"
+#include "SpikeTable.h"
 
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/gl3.h>
@@ -534,6 +535,11 @@ struct Rig
 	{
 		return readTexture( plugin.SurfaceTextureID(), plugin.SurfaceWidth(), plugin.SurfaceHeight() );
 	}
+	/// The pattern engine's own surface, before the solved spikes are placed.
+	Floats PoolSurface() const
+	{
+		return readTexture( plugin.PoolSurfaceTextureID(), plugin.SurfaceWidth(), plugin.SurfaceHeight() );
+	}
 	/// The spectral state ( h_k, v_k ).
 	Floats State() const
 	{
@@ -822,6 +828,7 @@ struct Perturb
 	bool cuesRamp     = false;
 	double hyScale    = -1.0;///< the model's Hy forced to this (--hysteresis's and --hexagons' negative: 0)
 	double substepScale = 1.0;///< the planned substep times this (--extremes' negative)
+	bool uncalibrated   = false;///< the pattern engine left at Hy 1, Sa 0.5 (--calibration's negative)
 };
 
 using CheckFn = int ( * )( const Perturb& );
@@ -849,6 +856,7 @@ int main( int argc, char** argv )
 	std::map< int, std::vector< std::string > > later;//--at FRAME "Name=V"
 	std::string clipPath;
 	int debugHooks = 0;//--hooks N: shaders::Hook bits on the plain render, for looking at one stage
+	double calibrateArgs[ 6 ] = {};
 	std::string dumpPath;//--dump PATH: the surface ( h, 0, h_x, h_y ) as raw float32, nx ny first
 	double substepScale = 1.0;//--substep-scale X: the planned substep times X (a Richardson look at the time step)
 
@@ -913,6 +921,14 @@ int main( int argc, char** argv )
 		}
 		else if( argument == "--script" && hasNext )
 			scriptPath = argv[ ++i ];
+		else if( argument == "--calibrate" && i + 6 < argc )
+		{
+			//The pattern engine's constants for a fluid, from its solved branch:
+			//--calibrate FLUID_INDEX M_FOLD PEAK_AT_ONSET_KC U0 U1 N (tools/spikes/generate.py).
+			mode = "calibrate";
+			for( int k = 0; k < 6; ++k )
+				calibrateArgs[ k ] = std::atof( argv[ ++i ] );
+		}
 		else if( argument == "--list" )
 			mode = "list";
 		else if( argument == "--size" && hasNext )
@@ -958,6 +974,9 @@ int main( int argc, char** argv )
 
 	if( mode == "offline" )
 		return runOffline();
+	if( mode == "calibrate" )
+		return runCalibrate( static_cast< int >( calibrateArgs[ 0 ] ), calibrateArgs[ 1 ], calibrateArgs[ 2 ], calibrateArgs[ 3 ], calibrateArgs[ 4 ],
+		                     static_cast< int >( calibrateArgs[ 5 ] ) );
 	for( const CheckEntry& check : checks() )
 		if( mode == check.flag && check.offline )
 			return check.run( Perturb {} );

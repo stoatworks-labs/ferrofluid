@@ -58,8 +58,6 @@ SWEEP = {
     "Coil Size": (["Coil Size=0.3"], ["Coil Size=0.8"], ["Magnet=Coil"]),
     "Coil Spread": (["Coil Spread=0.2"], ["Coil Spread=0.8"], ["Magnet=Three Coils"]),
     "Fluid": (["Fluid=EFH1"], ["Fluid=EMG 909"], []),
-    "Hysteresis": (["Hysteresis=0"], ["Hysteresis=1"], PATTERN),
-    "Saturation": (["Saturation=0"], ["Saturation=1"], PATTERN),
     "Viscosity": (["Viscosity=0"], ["Viscosity=1"], PATTERN),
     "Noise": (["Noise=0"], ["Noise=1"], PATTERN),
     "Settle": ([], [["--at", "175", "Settle=1"]], PATTERN),

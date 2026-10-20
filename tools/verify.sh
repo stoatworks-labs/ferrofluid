@@ -166,8 +166,8 @@ step "Checks (this Mac's GPU, 1280x720 and 320x180)"
 # at both rasters itself, except hysteresis, spread and extremes, which run at
 # 320x180 only: the pool is in metres and they measure the pool, not the
 # picture (AGENTS.md says so check by check).
-CHECKS="fft dispersion onset wavelength hexagons hysteresis spread mirror fresnel audio resize state extremes"
-for check in $CHECKS coil beat names cues; do
+CHECKS="fft dispersion onset wavelength hexagons hysteresis spread mirror fresnel audio resize state extremes spikes blend coilspikes"
+for check in $CHECKS coil beat names cues calibration; do
 	if out=$( "$FETEST" --$check 2>&1 ); then
 		printf '   ok   fetest --%s: %s checks\n' "$check" "$( printf '%s\n' "$out" | grep -c '^  ok' )"
 	else
@@ -194,6 +194,23 @@ for check in $SOFTWARE; do
 		fail "fetest --$check on the software renderer -- run: FETEST_RENDERER=software $FETEST --$check --size 320x180"
 	fi
 done
+
+#---------------------------------------------------------------------------
+step "The solved spikes: the table, the solver, Gollwitzer"
+#---------------------------------------------------------------------------
+# source/SpikeTable.cpp is generated (tools/spikes/generate.py) from solved
+# records; the table drifting from its sources or its records, a record that
+# is no longer a solution, or the solver leaving Gollwitzer et al.'s
+# measurements all fail here. Needs the harness for the calibration.
+#---------------------------------------------------------------------------
+log="$( mktemp )"
+if python3 tools/spikes/check.py --fetest "$FETEST" >"$log" 2>&1; then
+	grep -E '^  ok' "$log" | sed 's/^  ok  /   ok   /'
+else
+	grep -E '^  (ok|FAIL)|Error|Traceback' "$log" | sed 's/^/ /'
+	fail "the spike table, its solver or Gollwitzer -- run: python3 tools/spikes/check.py"
+fi
+rm -f "$log"
 
 #---------------------------------------------------------------------------
 step "Offline (what CI runs)"

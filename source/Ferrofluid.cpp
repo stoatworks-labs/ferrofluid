@@ -3,6 +3,7 @@
 #include "Diag.h"
 #include "GLState.h"
 #include "Shaders.h"
+#include "SpikeTable.h"
 
 //FFGLSDK.h includes every other scoped binding and omits this one (SDK
 //b1afaf9), so it has to be asked for by name.
@@ -249,6 +250,9 @@ FFResult FerrofluidPlugin::InitGL( const FFGLViewportStruct* vp )
 		{ &packShader, shaders::Pass::Pack, "pack" },
 		{ &boundsShader, shaders::Pass::Bounds, "bounds" },
 		{ &renderShader, shaders::Pass::Render, "render" },
+		{ &spikesShader, shaders::Pass::Spikes, "spikes" },
+		{ &depositShader, shaders::Pass::Deposit, "deposit" },
+		{ &combineShader, shaders::Pass::Combine, "combine" },
 	};
 	for( const Stage& stage : stages )
 	{
@@ -284,9 +288,14 @@ const physics::Datasheet& FerrofluidPlugin::Fluid() const
 
 physics::Nonlinear FerrofluidPlugin::Model() const
 {
+	//The pattern engine's constants: fitted per fluid to the solver's branch
+	//(its fold and its height at onset: SpikeTable.h), not chosen.
+	if( hasModelOverride )
+		return modelOverride;
+	const spikes::Table& table = spikes::TableFor( OptionIndex( params[ PT_FLUID ], 3 ) );
 	physics::Nonlinear model;
-	model.hysteresis = HysteresisFromParam( params[ PT_HYSTERESIS ] );
-	model.saturation = SaturationFromParam( params[ PT_SATURATION ] );
+	model.hysteresis = table.hysteresis;
+	model.saturation = table.saturation;
 	return model;
 }
 
@@ -314,6 +323,10 @@ bool FerrofluidPlugin::ensurePool( const Pool& want )
 			b.Destroy();
 		for( PassBuffer& b : surfaceWork )
 			b.Destroy();
+		for( PassBuffer& b : renderWork )
+			b.Destroy();
+		spikeWeights.Destroy();
+		spikeWhere.Destroy();
 		pack.Destroy();
 		force.Destroy();
 		for( PassBuffer& b : bounds )
@@ -328,6 +341,7 @@ bool FerrofluidPlugin::ensurePool( const Pool& want )
 		cameraTwiddleY = makeTwiddles( 2 * want.ny );
 		stateIndex   = 0;
 		surfaceIndex = 0;
+		renderIndex  = 0;
 		packValid    = false;
 		//The bounds chain: 8 x 8 blocks of the camera's surface down to one texel.
 		int w = 2 * want.nx, h = 2 * want.ny;
@@ -354,6 +368,11 @@ bool FerrofluidPlugin::ensurePool( const Pool& want )
 	//The pool wraps.
 	for( PassBuffer& b : surfaceWork )
 		ok = ok && b.Ensure( 2 * want.nx, 2 * want.ny, GL_RGBA32F, PassBuffer::Sampling::Linear, PassBuffer::Wrap::Repeat );
+	//The spikes, their deposit and the camera's surface, at the same grid.
+	for( PassBuffer& b : renderWork )
+		ok = ok && b.Ensure( 2 * want.nx, 2 * want.ny, GL_RGBA32F, PassBuffer::Sampling::Linear, PassBuffer::Wrap::Repeat );
+	ok = ok && spikeWeights.Ensure( 2 * want.nx, 2 * want.ny, GL_RGBA32F, PassBuffer::Sampling::Nearest );
+	ok = ok && spikeWhere.Ensure( 2 * want.nx, 2 * want.ny, GL_RGBA32F, PassBuffer::Sampling::Nearest );
 	int w = 2 * want.nx, h = 2 * want.ny;
 	for( PassBuffer& b : bounds )
 	{
@@ -787,6 +806,152 @@ void FerrofluidPlugin::repack()
 	packValid  = true;
 }
 
+//---------------------------------------------------------------------------
+// The solved spikes. The pool (the pattern engine) decides where spikes stand
+// and how far each has grown; the table (tools/spikes/, the full nonlinear
+// magnetostatics solved offline) decides what a spike at that field looks
+// like. Each spike is a narrow Gaussian deposit carrying its weights on the
+// table's basis; one transform, a product with the basis's transforms (the
+// Gaussian divided out) and the inverse place every spike at once.
+//---------------------------------------------------------------------------
+std::vector< float > PoolEquilibrium( const physics::Datasheet& fluid, const physics::Nonlinear& model, double criticalApplied, int n, double u0,
+                                      double u1 )
+{
+	//The pattern engine's own equilibrium peak against u, from its three-mode
+	//reduction (which --hysteresis holds the GPU to). Below its fold, the fold's.
+	std::vector< float > out( static_cast< size_t >( n ), 0.0f );
+	const double kc = physics::CriticalWavenumber( fluid );
+	double fold     = 0.0;
+	for( int i = n - 1; i >= 0; --i )
+	{
+		const double u = u0 + ( u1 - u0 ) * i / ( n - 1 );
+		const double m = physics::MagneticNumber( fluid, physics::Magnetise( fluid, u * criticalApplied ).g );
+		const physics::Hexagons hx = physics::ThreeMode( model, m );
+		if( hx.exists )
+			fold = hx.peak / kc;
+		out[ static_cast< size_t >( i ) ] = static_cast< float >( hx.exists ? hx.peak / kc : fold );
+	}
+	return out;
+}
+
+void FerrofluidPlugin::updateSpikeTables()
+{
+	const int fluidIndex = OptionIndex( params[ PT_FLUID ], 3 );
+	if( fluidIndex == tableFluid && coefficientTexture != 0 && basisTexture != 0 && equilibriumTexture != 0 )
+		return;
+	tableFluid                 = fluidIndex;
+	const spikes::Table& table = spikes::TableFor( fluidIndex );
+	for( GLuint* tex : { &coefficientTexture, &basisTexture, &equilibriumTexture } )
+		if( *tex != 0 )
+			glDeleteTextures( 1, tex );
+	coefficientTexture = makeTable( GL_RGBA32F, GL_RGBA, table.nGrid, table.coefficients );
+	basisTexture       = makeTable( GL_RGBA32F, GL_RGBA, table.nQ, table.basis );
+	if( hasModelOverride )
+	{
+		const std::vector< float > eq =
+		    PoolEquilibrium( Fluid(), Model(), physics::CriticalApplied( Fluid(), physicsHooks ), table.nEq, table.eqU0, table.eqU1 );
+		equilibriumTexture = makeTable( GL_R32F, GL_RED, table.nEq, eq.data() );
+	}
+	else
+		equilibriumTexture = makeTable( GL_R32F, GL_RED, table.nEq, table.eqPeak );
+}
+
+void FerrofluidPlugin::spikes()
+{
+	updateSpikeTables();
+	const spikes::Table& table = spikes::TableFor( tableFluid );
+	const int cx = 2 * pool.nx, cy = 2 * pool.ny;
+	const float cellX = static_cast< float >( pool.lx / cx ), cellY = static_cast< float >( pool.ly / cy );
+	const Magnet magnet = CurrentMagnet();
+	double currents[ 3 ];
+	coilCurrents( drive.FrameEnd(), currents );
+
+	//1. Where the spikes stand, and their weights.
+	glBindFramebuffer( GL_FRAMEBUFFER, mrtFBO );
+	glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, spikeWeights.TextureID(), 0 );
+	glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, spikeWhere.TextureID(), 0 );
+	const GLenum targets[ 2 ] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers( 2, targets );
+	glViewport( 0, 0, cx, cy );
+	discardTarget();
+	glUseProgram( spikesShader.GetGLID() );
+	bindUnit( 0, surfaceWork[ surfaceIndex ].TextureID() );
+	bindUnit( 1, coilTable );
+	bindUnit( 2, coefficientTexture );
+	bindUnit( 3, equilibriumTexture );
+	uniform( spikesShader, "Surface", 0 );
+	uniform( spikesShader, "CoilTable", 1 );
+	uniform( spikesShader, "Coefficients", 2 );
+	uniform( spikesShader, "Equilibrium", 3 );
+	glUniform2i( where( spikesShader, "Size" ), cx, cy );
+	uniform( spikesShader, "Cell", cellX, cellY );
+	uniform( spikesShader, "Domain", static_cast< float >( pool.lx ), static_cast< float >( pool.ly ) );
+	uniform( spikesShader, "Magnet", static_cast< int >( magnet ) );
+	uniform( spikesShader, "UniformU", static_cast< float >( currents[ 0 ] * centreField / criticalApplied ) );
+	uniform( spikesShader, "RhoMax", static_cast< float >( rhoMax ) );
+	float c[ 6 ];
+	for( int i = 0; i < 6; ++i )
+		c[ i ] = static_cast< float >( centres[ i ] );
+	glUniform2fv( where( spikesShader, "Centres" ), 3, c );
+	uniform( spikesShader, "CoilCount", magnet == Magnet::ThreeCoils ? 3 : 1 );
+	uniform( spikesShader, "CurrentsU", static_cast< float >( currents[ 0 ] / criticalApplied ), static_cast< float >( currents[ 1 ] / criticalApplied ),
+	         static_cast< float >( currents[ 2 ] / criticalApplied ) );
+	uniform( spikesShader, "NGrid", table.nGrid );
+	uniform( spikesShader, "UFold", static_cast< float >( table.uFold ) );
+	uniform( spikesShader, "VEnd", static_cast< float >( table.vEnd ) );
+	uniform( spikesShader, "NEq", table.nEq );
+	uniform( spikesShader, "EqRange", static_cast< float >( table.eqU0 ), static_cast< float >( table.eqU1 ) );
+	uniform( spikesShader, "Reach",
+	         std::max( 2, static_cast< int >( 0.25 * physics::CriticalWavelength( Fluid() ) / std::max( cellX, cellY ) ) ) );
+	uniform( spikesShader, "Hooks", hooks );
+	quad.Draw();
+	unbindTextureUnits( 4 );
+	const GLenum one[ 1 ] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers( 1, one );
+
+	//2. The deposit: a Gaussian of one texel at each spike.
+	const double sigma = std::min( cellX, cellY );
+	glBindFramebuffer( GL_FRAMEBUFFER, renderWork[ 0 ].GetGLID() );
+	glViewport( 0, 0, cx, cy );
+	discardTarget();
+	glUseProgram( depositShader.GetGLID() );
+	bindUnit( 0, spikeWeights.TextureID() );
+	bindUnit( 1, spikeWhere.TextureID() );
+	uniform( depositShader, "Weights", 0 );
+	uniform( depositShader, "Where", 1 );
+	glUniform2i( where( depositShader, "Size" ), cx, cy );
+	uniform( depositShader, "Cell", cellX, cellY );
+	uniform( depositShader, "Sigma", static_cast< float >( sigma ) );
+	uniform( depositShader, "Norm", static_cast< float >( 1.0 / ( 2.0 * physics::kPi * sigma * sigma ) ) );
+	quad.Draw();
+	unbindTextureUnits( 2 );
+
+	//3. Its transform, times the basis, and back.
+	int last = 0;
+	transform( renderWork[ 0 ].TextureID(), renderWork, last, -1.0f, cx, cy, cameraTwiddleX, cameraTwiddleY );
+	const int target = 1 - last;
+	glBindFramebuffer( GL_FRAMEBUFFER, renderWork[ target ].GetGLID() );
+	glViewport( 0, 0, cx, cy );
+	discardTarget();
+	glUseProgram( combineShader.GetGLID() );
+	bindUnit( 0, renderWork[ last ].TextureID() );
+	bindUnit( 1, basisTexture );
+	uniform( combineShader, "Spectrum", 0 );
+	uniform( combineShader, "Basis", 1 );
+	glUniform2i( where( combineShader, "Size" ), cx, cy );
+	uniform( combineShader, "Domain", static_cast< float >( pool.lx ), static_cast< float >( pool.ly ) );
+	uniform( combineShader, "Kc", static_cast< float >( physics::CriticalWavenumber( Fluid() ) ) );
+	uniform( combineShader, "NQ", table.nQ );
+	uniform( combineShader, "QMax", static_cast< float >( table.qMax ) );
+	uniform( combineShader, "Sigma", static_cast< float >( sigma ) );
+	uniform( combineShader, "Norm", static_cast< float >( 1.0 / ( static_cast< double >( cx ) * cy ) ) );
+	quad.Draw();
+	unbindTextureUnits( 2 );
+	last = target;
+	transform( renderWork[ target ].TextureID(), renderWork, last, 1.0f, cx, cy, cameraTwiddleX, cameraTwiddleY );
+	renderIndex = last;
+}
+
 void FerrofluidPlugin::surfaceAndBounds()
 {
 	//The camera's surface: ( h, 0, h_x, h_y ), the spectrum zero-padded to
@@ -808,11 +973,14 @@ void FerrofluidPlugin::surfaceAndBounds()
 	transform( surfaceWork[ 0 ].TextureID(), surfaceWork, last, 1.0f, cx, cy, cameraTwiddleX, cameraTwiddleY );
 	surfaceIndex = last;
 
+	//The camera's surface: the solved spike at each of the pool's spikes.
+	spikes();
+
 	//The march's slab and slope bound, by blocks down to one texel.
 	glUseProgram( boundsShader.GetGLID() );
 	uniform( boundsShader, "Source", 0 );
 	uniform( boundsShader, "Cell", static_cast< float >( pool.lx / cx ), static_cast< float >( pool.ly / cy ) );
-	GLuint source = surfaceWork[ surfaceIndex ].TextureID();
+	GLuint source = renderWork[ renderIndex ].TextureID();
 	int w = cx, h = cy;
 	for( size_t i = 0; i < bounds.size(); ++i )
 	{
@@ -855,7 +1023,7 @@ void FerrofluidPlugin::render( const FFGLTextureStruct* input, const GLint* host
 	glViewport( hostViewport[ 0 ], hostViewport[ 1 ], hostViewport[ 2 ], hostViewport[ 3 ] );
 	glUseProgram( renderShader.GetGLID() );
 
-	bindUnit( 0, surfaceWork[ surfaceIndex ].TextureID() );
+	bindUnit( 0, renderWork[ renderIndex ].TextureID() );
 	bindUnit( 1, bounds.back().TextureID() );
 	//Always a real texture on the clip's unit, even in the source: a sampler on
 	//texture 0 is "unloadable" to Apple's GL (boreal's trap).
@@ -1198,6 +1366,9 @@ FFResult FerrofluidPlugin::DeInitGL()
 	packShader.FreeGLResources();
 	boundsShader.FreeGLResources();
 	renderShader.FreeGLResources();
+	spikesShader.FreeGLResources();
+	depositShader.FreeGLResources();
+	combineShader.FreeGLResources();
 	quad.Release();
 	for( PassBuffer& b : state )
 		b.Destroy();
@@ -1205,6 +1376,10 @@ FFResult FerrofluidPlugin::DeInitGL()
 		b.Destroy();
 	for( PassBuffer& b : surfaceWork )
 		b.Destroy();
+	for( PassBuffer& b : renderWork )
+		b.Destroy();
+	spikeWeights.Destroy();
+	spikeWhere.Destroy();
 	for( PassBuffer& b : testWork )
 		b.Destroy();
 	pack.Destroy();
@@ -1212,7 +1387,8 @@ FFResult FerrofluidPlugin::DeInitGL()
 	for( PassBuffer& b : bounds )
 		b.Destroy();
 	bounds.clear();
-	for( GLuint* t : { &twiddleX, &twiddleY, &cameraTwiddleX, &cameraTwiddleY, &coilTable, &fluidTable } )
+	for( GLuint* t : { &twiddleX, &twiddleY, &cameraTwiddleX, &cameraTwiddleY, &coilTable, &fluidTable, &coefficientTexture, &basisTexture,
+	                   &equilibriumTexture } )
 	{
 		if( *t != 0 )
 			glDeleteTextures( 1, t );
@@ -1221,10 +1397,11 @@ FFResult FerrofluidPlugin::DeInitGL()
 	if( mrtFBO != 0 )
 		glDeleteFramebuffers( 1, &mrtFBO );
 	mrtFBO    = 0;
-	pool      = Pool {};
-	poolFluid = -1;
-	tablesFor = Key {};
-	packValid = false;
+	pool       = Pool {};
+	poolFluid  = -1;
+	tablesFor  = Key {};
+	tableFluid = -1;
+	packValid  = false;
 	return FF_SUCCESS;
 }
 

@@ -25,8 +25,7 @@ void quiet( Rig& rig )
 	rig.Set( PT_COIL_SIZE, ParamFromCoilSize( 0.025 ) );
 	rig.Set( PT_COIL_SPREAD, ParamFromSpread( 0.08 ) );
 	rig.Set( PT_FLUID, 0.0f );
-	rig.Set( PT_HYSTERESIS, 0.0f );
-	rig.Set( PT_SATURATION, ParamFromSaturation( 2.0 ) );
+	rig.plugin.SetModelForTest( physics::Nonlinear { 0.0, 2.0 } );
 	rig.Set( PT_VISCOSITY, ParamFromViscosity( 1.0 ) );
 	rig.Set( PT_NOISE, 0.0f );
 	rig.Set( PT_FIELD_WIDTH, ParamFromFieldWidth( 0.12 ) );
@@ -286,6 +285,7 @@ int runCues( const Perturb& perturb )
 }
 
 #include "physics.inc"
+#include "spikes.inc"
 
 //===========================================================================
 // The registry.
@@ -315,6 +315,10 @@ const std::vector< CheckEntry >& checks()
 		{ "resize", runResize, false },
 		{ "state", runState, false },
 		{ "extremes", runExtremes, false },
+		{ "spikes", runSpikes, false },
+		{ "blend", runBlend, false },
+		{ "coilspikes", runCoilSpikes, false },
+		{ "calibration", runCalibration, true },
 		{ "names", runNames, true },
 		{ "cues", runCues, true },
 	};
@@ -365,6 +369,10 @@ int runNegative( bool offlineOnly = false )
 	add( "resize", runResize, "a new raster flattens the pool", []( Perturb& p ) { p.resizeClears = true; } );
 	add( "extremes", runExtremes, "the substep three times what the plan allows", []( Perturb& p ) { p.substepScale = 3.0; } );
 	add( "cues", runCues, "ramp every control between keys", []( Perturb& p ) { p.cuesRamp = true; } );
+	add( "spikes", runSpikes, "every spike the fold's, whatever its field", []( Perturb& p ) { p.hooks = kHookFoldSpike; } );
+	add( "blend", runBlend, "every spike placed fully grown", []( Perturb& p ) { p.hooks = kHookFullGrown; } );
+	add( "coilspikes", runCoilSpikes, "every spike given the field on the coil's axis", []( Perturb& p ) { p.hooks = kHookAxisField; } );
+	add( "calibration", runCalibration, "the pattern engine left at Hy 1, Sa 0.5", []( Perturb& p ) { p.uncalibrated = true; } );
 
 	if( offlineOnly )
 		cases.erase( std::remove_if( cases.begin(), cases.end(), []( const Case& c ) { return !isOffline( c.name ); } ), cases.end() );
@@ -389,6 +397,44 @@ int runNegative( bool offlineOnly = false )
 	std::printf( "\nnegative controls: %zu wrong models, %d of them undetected\n", cases.size(), unfalsifiable );
 	std::printf( "\n  %s\n", unfalsifiable == 0 ? "PASS" : "FAIL" );
 	return unfalsifiable == 0 ? 0 : 1;
+}
+
+//===========================================================================
+// --calibrate: the pattern engine's two constants for a fluid, so that its
+// fold is the solver's (the saddle-node depends on Hy^2 / Sa alone: the family
+// ( l Hy, l^2 Sa ) shares it) and its peak at onset is the solver's (within the
+// family the peak goes as 1 / l); and its equilibrium against u for the blend.
+// Prints one JSON object for tools/spikes/generate.py.
+//===========================================================================
+int runCalibrate( int fluidIndex, double mFold, double peakKc, double u0, double u1, int n )
+{
+	const physics::Datasheet& fluid = physics::FluidOf( static_cast< physics::FluidId >( fluidIndex ) );
+	const double sa0                = 0.5;
+	auto foldOf = [ & ]( double ratio ) { return physics::SaddleNode( physics::Nonlinear { std::sqrt( ratio * sa0 ), sa0 } ); };
+	double lo = std::log( 1e-4 ), hi = std::log( 50.0 );
+	if( !( foldOf( std::exp( lo ) ) > mFold && foldOf( std::exp( hi ) ) < mFold ) )
+	{
+		std::fprintf( stderr, "the fold %.6f is outside what the pattern engine reaches\n", mFold );
+		return 1;
+	}
+	for( int i = 0; i < 60; ++i )
+	{
+		const double mid = 0.5 * ( lo + hi );
+		( foldOf( std::exp( mid ) ) > mFold ? lo : hi ) = mid;
+	}
+	const double ratio = std::exp( 0.5 * ( lo + hi ) );
+	physics::Nonlinear model { std::sqrt( ratio * sa0 ), sa0 };
+	const double peak1 = physics::ThreeMode( model, 1.0 ).peak;
+	const double l     = peak1 / peakKc;
+	model.hysteresis *= l;
+	model.saturation *= l * l;
+	const std::vector< float > eq = PoolEquilibrium( fluid, model, physics::CriticalApplied( fluid ), n, u0, u1 );
+	std::printf( "{\"hysteresis\": %.12g, \"saturation\": %.12g, \"fold\": %.9g, \"peak_at_onset_kc\": %.9g, \"eq\": [", model.hysteresis,
+	             model.saturation, physics::SaddleNode( model ), physics::ThreeMode( model, 1.0 ).peak );
+	for( int i = 0; i < n; ++i )
+		std::printf( "%s%.9g", i ? ", " : "", eq[ static_cast< size_t >( i ) ] );
+	std::printf( "]}\n" );
+	return 0;
 }
 
 int runOffline()

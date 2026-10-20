@@ -33,6 +33,8 @@ MUTANTS=(
 	"source/Fluid.cpp|op.r0 / ( 1.0 + op.r0 )|op.r0 / ( 2.0 + op.r0 )|--dispersion|C++: Cowley-Rosensweig's r0 / ( 2 + r0 ), 1 -> 2"
 	"source/Fluid.cpp|if( mid + Magnetisation( fluid, mid ) < op.applied )|if( mid - Magnetisation( fluid, mid ) < op.applied )|--onset|C++: the demagnetising jump with the wrong sign, + -> -"
 	"source/Coil.cpp|( ( a * a - r2 ) * E + alpha2 * K )|( ( a * a + r2 ) * E + alpha2 * K )|--coil|C++: the loop's elliptic formula with + r^2, - -> +"
+	"source/Shaders.cpp|float g = exp( -0.5 * Sigma * Sigma * dot( k, k ) );|float g = exp( +0.5 * Sigma * Sigma * dot( k, k ) );|--spikes|GLSL: the deposit's Gaussian multiplied in, not divided out, - -> +"
+	"source/Shaders.cpp|float grown = clamp( peak / max( eq, 1e-9 ), 0.0, 1.0 );|float grown = clamp( peak * max( eq, 1e-9 ), 0.0, 1.0 );|--blend|GLSL: the spike's share its height times its equilibrium's, / -> *"
 	"source/Coil.cpp|std::exp( -dt / tau )|std::exp( -dt * tau )|--coil|C++: the L/R lag's exponent dt tau, / -> *"
 	"source/Drive.cpp|( boundary - p0 ) / ( p1 - p0 )|( boundary + p0 ) / ( p1 - p0 )|--beat|C++: the beat's place in its frame from the sum of phases, - -> +"
 	"source/Audio.cpp|			flux = 0.0f;|			flux = 1.0f;|--audio|C++: the first frame primed with a flux of 1, not 0, 0 -> 1"

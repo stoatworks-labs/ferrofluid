@@ -34,8 +34,6 @@ constexpr double kLagLow = 1e-3, kLagHigh = 0.3;
 constexpr double kPulseLow = 0.01, kPulseHigh = 1.0;
 constexpr double kCoilLow = 0.005, kCoilHigh = 0.08;
 constexpr double kSpreadLow = 0.02, kSpreadHigh = 0.30;
-constexpr double kHyHigh = 2.0;
-constexpr double kSaLow = 0.35, kSaHigh = 8.0;
 constexpr double kViscLow = 0.25, kViscHigh = 100.0;
 constexpr double kNoiseLow = 1e-6, kNoiseHigh = 1e-1;
 constexpr double kFieldLow = 0.02, kFieldHigh = 0.40;
@@ -85,8 +83,6 @@ const ControlInfo kTable[] = {
 	standard( PT_COIL_SPREAD, "Coil Spread", "Magnet", ParamFromSpread( 0.08 ) ),
 
 	option( PT_FLUID, "Fluid", "Fluid", 0.0f, kFluidNames, 3 ),
-	standard( PT_HYSTERESIS, "Hysteresis", "Fluid", ParamFromHysteresis( 1.0 ) ),
-	standard( PT_SATURATION, "Saturation", "Fluid", ParamFromSaturation( 0.5 ) ),
 	standard( PT_VISCOSITY, "Viscosity", "Fluid", ParamFromViscosity( 1.0 ) ),
 	standard( PT_NOISE, "Noise", "Fluid", ParamFromNoise( 1e-3 ) ),
 	event( PT_SETTLE, "Settle", "Fluid" ),
@@ -180,24 +176,6 @@ double SpreadFromParam( float v )
 float ParamFromSpread( double m )
 {
 	return inverseGeometric( m, kSpreadLow, kSpreadHigh );
-}
-
-double HysteresisFromParam( float v )
-{
-	return linear( v, 0.0, kHyHigh );
-}
-float ParamFromHysteresis( double hy )
-{
-	return inverseLinear( hy, 0.0, kHyHigh );
-}
-
-double SaturationFromParam( float v )
-{
-	return geometric( v, kSaLow, kSaHigh );
-}
-float ParamFromSaturation( double sa )
-{
-	return inverseGeometric( sa, kSaLow, kSaHigh );
 }
 
 double ViscosityFromParam( float v )

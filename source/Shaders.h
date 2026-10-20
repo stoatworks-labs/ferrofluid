@@ -72,6 +72,9 @@ extern const char* const kForceFragment;
 extern const char* const kPackFragment;
 extern const char* const kBoundsFragment;
 extern const char* const kRenderFragment;
+extern const char* const kSpikesFragment;
+extern const char* const kDepositFragment;
+extern const char* const kCombineFragment;
 
 enum class Pass
 {
@@ -80,7 +83,10 @@ enum class Pass
 	Force,
 	Pack,
 	Bounds,
-	Render
+	Render,
+	Spikes,
+	Deposit,
+	Combine
 };
 std::string Assemble( Pass pass );
 
@@ -102,7 +108,10 @@ enum Hook : int
 	kHookSPolarised    = 1 << 4,///< Fresnel's s term alone, not the unpolarised mean
 	kHookNoLocalField  = 1 << 5,///< the local-field residual dropped: the pool sees G_ref everywhere
 	kHookNoKick        = 1 << 6,///< the stress never reaches the modes
-	kHookHeightView    = 1 << 7 ///< the render shows the height as grey (the harness's picture)
+	kHookHeightView    = 1 << 7,///< each pixel is where its ray met the surface, ( x, y, z ) in metres (the harness's picture)
+	kHookFullGrown     = 1 << 8,///< every spike placed at full height, however far it has grown
+	kHookFoldSpike     = 1 << 9,///< every spike the fold's, whatever the field it stands in
+	kHookAxisField     = 1 << 10///< every spike given the field on its coil's axis
 };
 
 } // namespace ferrofluid::shaders

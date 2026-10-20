@@ -46,8 +46,6 @@ enum ParamId : unsigned int
 
 	// -- Fluid -------------------------------------------------------------------
 	PT_FLUID,
-	PT_HYSTERESIS,
-	PT_SATURATION,
 	PT_VISCOSITY,
 	PT_NOISE,
 	PT_SETTLE,
@@ -161,14 +159,6 @@ float ParamFromCoilSize( double metres );
 /// Coil Spread: the triangle's side, 2 to 30 cm, geometrically. Metres.
 double SpreadFromParam( float value );
 float ParamFromSpread( double metres );
-
-/// Hysteresis: the model's Hy, 0 to 2, linearly.
-double HysteresisFromParam( float value );
-float ParamFromHysteresis( double hy );
-
-/// Saturation: the model's Sa, 0.35 to 8, geometrically.
-double SaturationFromParam( float value );
-float ParamFromSaturation( double sa );
 
 /// Viscosity: a multiple of the datasheet's, 0.25x to 100x, geometrically.
 double ViscosityFromParam( float value );

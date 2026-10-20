@@ -33,6 +33,12 @@ struct Pool
 	}
 };
 
+/// The pattern engine's own equilibrium peak height (m) against u = Ha / Ha_c,
+/// n samples over [ u0, u1 ], from its three-mode reduction; below its fold,
+/// the fold's. The blend's denominator (SpikeTable.h ships it per fluid).
+std::vector< float > PoolEquilibrium( const physics::Datasheet& fluid, const physics::Nonlinear& model, double criticalApplied, int n, double u0,
+                                      double u1 );
+
 /// What one frame's substep plan came to.
 struct Plan
 {
@@ -153,11 +159,40 @@ public:
 	{
 		return state[ stateIndex ].TextureID();
 	}
-	/// ( h, 0, h_x, h_y ) as the camera saw it: the pool's surface interpolated
-	/// spectrally to twice its grid (SurfaceWidth x SurfaceHeight), metres.
+	/// ( h, 0, h_x, h_y ) as the camera saw it: the solved spikes placed at the
+	/// pool's spikes (SurfaceWidth x SurfaceHeight), metres.
 	GLuint SurfaceTextureID() const
 	{
+		return renderWork[ renderIndex ].TextureID();
+	}
+	/// The pool's own surface, the pattern engine's, interpolated spectrally to
+	/// twice its grid: what the spikes are placed by. Metres.
+	GLuint PoolSurfaceTextureID() const
+	{
 		return surfaceWork[ surfaceIndex ].TextureID();
+	}
+	/// Where the spikes stood last frame: ( offset x, offset y, 1 if a spike, peak ),
+	/// and their weights on the table's basis, at SurfaceWidth x SurfaceHeight.
+	GLuint SpikeWhereTextureID() const
+	{
+		return spikeWhere.TextureID();
+	}
+	GLuint SpikeWeightsTextureID() const
+	{
+		return spikeWeights.TextureID();
+	}
+	/// The pattern engine's constants: fitted per fluid to the solver unless the
+	/// harness sets its own.
+	void SetModelForTest( const physics::Nonlinear& model )
+	{
+		modelOverride    = model;
+		hasModelOverride = true;
+		tableFluid       = -1;
+	}
+	void ClearModelForTest()
+	{
+		hasModelOverride = false;
+		tableFluid       = -1;
 	}
 	int SurfaceWidth() const
 	{
@@ -291,13 +326,17 @@ private:
 	float params[ PT_COUNT ] = {};
 
 	ffglex::FFGLShader fftShader, evolveShader, forceShader, packShader, boundsShader, renderShader;
+	ffglex::FFGLShader spikesShader, depositShader, combineShader;
 	ffglex::FFGLScreenQuad quad;
 
 	PassBuffer state[ 2 ];      ///< RGBA32F spectral ( h_k, v_k )
 	PassBuffer pack;            ///< RGBA32F: the next inverse's input
 	PassBuffer work[ 2 ];       ///< RGBA32F: the substep transforms' ping-pong
 	PassBuffer force;           ///< RGBA32F: the stress, real space
-	PassBuffer surfaceWork[ 2 ];///< RGBA32F, twice the pool's grid: the camera's surface, and its transform's ping-pong
+	PassBuffer surfaceWork[ 2 ];///< RGBA32F, twice the pool's grid: the pool's surface, and its transform's ping-pong
+	PassBuffer spikeWeights;    ///< RGBA32F, twice the pool's grid: each spike's weights on the table's basis
+	PassBuffer spikeWhere;      ///< RGBA32F, twice the pool's grid: ( offset, 1, peak ) at each spike
+	PassBuffer renderWork[ 2 ]; ///< RGBA32F, twice the pool's grid: the deposit, its spectrum, the camera's surface
 	PassBuffer testWork[ 2 ];   ///< RGBA32F, the pool's grid: TransformForTest only
 	std::vector< PassBuffer > bounds;
 	GLuint twiddleX = 0, twiddleY = 0, cameraTwiddleX = 0, cameraTwiddleY = 0;
@@ -305,6 +344,13 @@ private:
 	GLuint mrtFBO    = 0;
 	int stateIndex   = 0;
 	int surfaceIndex = 0;
+	int renderIndex  = 0;
+	GLuint coefficientTexture = 0, basisTexture = 0, equilibriumTexture = 0;
+	int tableFluid = -1;
+	physics::Nonlinear modelOverride;
+	bool hasModelOverride = false;
+	void updateSpikeTables();
+	void spikes();
 	bool packValid   = false;
 
 	Pool pool, poolOverride;

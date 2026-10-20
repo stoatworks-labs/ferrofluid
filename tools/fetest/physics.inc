@@ -26,7 +26,7 @@ double multipleForM( const physics::Datasheet& fluid, double m, int physicsHooks
 /// exactly at the even indices).
 std::vector< double > poolHeights( Rig& rig )
 {
-	const Floats s = rig.Surface();
+	const Floats s = rig.PoolSurface();
 	const Pool& p  = rig.plugin.CurrentPool();
 	const int w    = rig.plugin.SurfaceWidth();
 	std::vector< double > h( static_cast< size_t >( p.nx ) * p.ny );
@@ -69,8 +69,7 @@ Floats hexagonSeed( const Pool& p, double amplitude )
 void uniformPool( Rig& rig, double hy, double sa, double multiple, double noise = 0.0 )
 {
 	rig.Set( PT_MAGNET, static_cast< float >( Magnet::Uniform ) );
-	rig.Set( PT_HYSTERESIS, ParamFromHysteresis( hy ) );
-	rig.Set( PT_SATURATION, ParamFromSaturation( sa ) );
+	rig.plugin.SetModelForTest( physics::Nonlinear { hy, sa } );
 	rig.Set( PT_BIAS, ParamFromCurrent( multiple ) );
 	rig.Set( PT_GAIN, 0.0f );
 	rig.Set( PT_COIL_LAG, ParamFromLag( 0.001 ) );
@@ -275,6 +274,8 @@ bool settledPattern( Rig& rig, const Perturb& perturb, double hy, double sa, dou
 
 int runWavelength( const Perturb& perturb )
 {
+	//the pattern engine as it ships for EFH1: calibrated to the solver's branch
+	const spikes::Table& shipped = spikes::TableFor( 0 );
 	std::printf( "\n=== wavelength: the settled pattern's dominant wavenumber is k_c = sqrt( rho g / sigma ), from the height and from the picture\n" );
 	const physics::Datasheet& fluid = physics::FluidOf( physics::FluidId::EFH1 );
 	const double kc                 = physics::CriticalWavenumber( fluid );
@@ -288,7 +289,7 @@ int runWavelength( const Perturb& perturb )
 		//studio's ceiling in the flat parts and darker flanks.
 		rig.Set( PT_FIELD_WIDTH, ParamFromFieldWidth( pool.lx ) );
 		rig.Set( PT_BACKDROP, static_cast< float >( Backdrop::Studio ) );
-		if( !settledPattern( rig, perturb, 1.0, 0.5, 1.04, 300 ) )
+		if( !settledPattern( rig, perturb, shipped.hysteresis, shipped.saturation, 1.04, 300 ) )
 			return 1;
 		const std::vector< Peak > peaks = spectralPeaks( poolHeights( rig ), pool, 1 );
 		const double k   = std::hypot( 2.0 * kPi * peaks[ 0 ].mx / pool.lx, 2.0 * kPi * peaks[ 0 ].my / pool.ly );
@@ -346,6 +347,7 @@ int runWavelength( const Perturb& perturb )
 
 int runHexagons( const Perturb& perturb )
 {
+	const spikes::Table& shipped = spikes::TableFor( 0 );
 	std::printf( "\n=== hexagons: the settled pattern's spectrum has three dominant peaks at k_c, 60 degrees apart, of comparable strength\n" );
 	const physics::Datasheet& fluid = physics::FluidOf( physics::FluidId::EFH1 );
 	const Pool pool                 = hexagonPool( fluid );
@@ -354,7 +356,7 @@ int runHexagons( const Perturb& perturb )
 		Rig rig;
 		if( !startRig( rig, raster.w, raster.h, perturb ) )
 			return 1;
-		if( !settledPattern( rig, perturb, 1.0, 0.5, 1.04, 300 ) )
+		if( !settledPattern( rig, perturb, shipped.hysteresis, shipped.saturation, 1.04, 300 ) )
 			return 1;
 		const std::vector< Peak > peaks = spectralPeaks( poolHeights( rig ), pool, 3 );
 		double angles[ 3 ];
@@ -616,8 +618,7 @@ int runSpread( const Perturb& perturb )
 			return 1;
 		rig.Set( PT_MAGNET, static_cast< float >( Magnet::Coil ) );
 		rig.Set( PT_COIL_SIZE, ParamFromCoilSize( radius ) );
-		rig.Set( PT_HYSTERESIS, 0.0f );//supercritical: no fronts to invade the bistable ring
-		rig.Set( PT_SATURATION, ParamFromSaturation( 1.0 ) );
+		rig.plugin.SetModelForTest( physics::Nonlinear { 0.0, 1.0 } );//supercritical: no fronts to invade the bistable ring
 		rig.Set( PT_BIAS, ParamFromCurrent( multiple ) );
 		rig.Set( PT_COIL_LAG, ParamFromLag( 0.001 ) );
 		rig.Set( PT_NOISE, ParamFromNoise( 1e-3 ) );
@@ -913,8 +914,7 @@ int runResize( const Perturb& perturb )
 		auto configure = []( Rig& rig ) {
 			rig.bpm = 120.0;
 			rig.Set( PT_NOISE, ParamFromNoise( 1e-3 ) );
-			rig.Set( PT_HYSTERESIS, ParamFromHysteresis( 2.0 ) );
-			rig.Set( PT_SATURATION, ParamFromSaturation( 0.7 ) );
+			rig.plugin.SetModelForTest( physics::Nonlinear { 2.0, 0.7 } );
 			rig.Set( PT_BIAS, ParamFromCurrent( 1.05 ) );
 		};
 		Rig resized;
@@ -1039,27 +1039,22 @@ int runExtremes( const Perturb& perturb )
 		std::function< void( Rig& ) > set;
 	};
 	const Corner corners[] = {
-		{ "Uniform, the drive at its 1.6 Ic ceiling on every beat, Hysteresis 2, Saturation 0.35", []( Rig& r ) {
+		{ "Uniform EFH1, the drive at its 1.6 Ic ceiling on every beat", []( Rig& r ) {
 			 r.Set( PT_MAGNET, 0.0f );
 			 r.Set( PT_BIAS, 1.0f );
 			 r.Set( PT_GAIN, 1.0f );
-			 r.Set( PT_HYSTERESIS, 1.0f );
-			 r.Set( PT_SATURATION, 0.0f );
 		 } },
-		{ "Three Coils, 8 cm, 2 cm apart, 1.5 Ic each, Hysteresis 2, Saturation 0.35", []( Rig& r ) {
+		{ "Three Coils, 8 cm, 2 cm apart, 1.5 Ic each, EFH1", []( Rig& r ) {
 			 r.Set( PT_MAGNET, 2.0f );
 			 r.Set( PT_COIL_SIZE, 1.0f );
 			 r.Set( PT_COIL_SPREAD, 0.0f );
 			 r.Set( PT_BIAS, 1.0f );
-			 r.Set( PT_HYSTERESIS, 1.0f );
-			 r.Set( PT_SATURATION, 0.0f );
 		 } },
-		{ "Coil, 5 mm, the ceiling, Saturation 8, Viscosity 100x, EMG 909", []( Rig& r ) {
+		{ "Coil, 5 mm, the ceiling, Viscosity 100x, EMG 909", []( Rig& r ) {
 			 r.Set( PT_MAGNET, 1.0f );
 			 r.Set( PT_COIL_SIZE, 0.0f );
 			 r.Set( PT_BIAS, 1.0f );
 			 r.Set( PT_GAIN, 1.0f );
-			 r.Set( PT_SATURATION, 1.0f );
 			 r.Set( PT_VISCOSITY, 1.0f );
 			 r.Set( PT_FLUID, 2.0f );
 		 } },

@@ -56,6 +56,9 @@ ASSEMBLED = {
 	"pack":    [ "kVersion", "kCommon", "kPackFragment" ],
 	"bounds":  [ "kVersion", "kCommon", "kBoundsFragment" ],
 	"render":  [ "kVersion", "kCommon", "kRenderFragment" ],
+	"spikes":  [ "kVersion", "kCommon", "kSpikesFragment" ],
+	"deposit": [ "kVersion", "kCommon", "kDepositFragment" ],
+	"combine": [ "kVersion", "kCommon", "kCombineFragment" ],
 }
 
 named, unnamed = {}, []

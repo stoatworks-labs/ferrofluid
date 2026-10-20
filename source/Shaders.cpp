@@ -426,6 +426,220 @@ void main()
 )";
 
 //---------------------------------------------------------------------------
+// spikes: where the pool's spikes stand, how far each has grown towards its
+// equilibrium, and the solved spike that belongs there.
+//---------------------------------------------------------------------------
+const char* const kSpikesFragment = R"(
+uniform sampler2D Surface;     //the pool's surface at twice its grid: ( h, 0, h_x, h_y ), metres
+uniform ivec2 Size;            //its texels
+uniform vec2 Cell;             //metres a texel
+uniform vec2 Domain;           //metres, the pool's centre at 0
+uniform int Magnet;            //0 uniform, 1 one coil, 2 three
+uniform float UniformU;        //Magnet 0: u = Ha / Ha_c over the whole pool
+uniform sampler2D CoilTable;   //H_z per amp at the surface, from rho = 0 to RhoMax
+uniform float RhoMax;
+uniform vec2 Centres[ 3 ];
+uniform int CoilCount;
+uniform vec3 CurrentsU;        //each coil's current over Ha_c (amps per A/m)
+uniform sampler2D Coefficients;//nGrid x 1: the table's basis coefficients at v = sqrt( u - u_fold )
+uniform int NGrid;
+uniform float UFold;
+uniform float VEnd;
+uniform sampler2D Equilibrium; //NEq x 1: the pool's own equilibrium peak height, metres, against u
+uniform int NEq;
+uniform vec2 EqRange;          //its u range
+uniform int Reach;             //texels in a quarter of a wavelength
+uniform int Hooks;
+
+layout( location = 0 ) out vec4 weights;
+layout( location = 1 ) out vec4 where;
+
+vec4 at( ivec2 c )
+{
+	return texelFetch( Surface, ( c + Size ) % Size, 0 );
+}
+
+float lookup( sampler2D table, float x )
+{
+	float f = clamp( x, 0.0, 1.0 ) * float( kTableSize - 1 );
+	int i   = min( int( f ), kTableSize - 2 );
+	float t = f - float( i );
+	return mix( texelFetch( table, ivec2( i, 0 ), 0 ).x, texelFetch( table, ivec2( i + 1, 0 ), 0 ).x, t );
+}
+
+vec4 row( sampler2D table, int n, float f )
+{
+	f       = clamp( f, 0.0, float( n - 1 ) );
+	int i   = min( int( f ), n - 2 );
+	float t = f - float( i );
+	return mix( texelFetch( table, ivec2( i, 0 ), 0 ), texelFetch( table, ivec2( i + 1, 0 ), 0 ), t );
+}
+
+void main()
+{
+	ivec2 c = ivec2( gl_FragCoord.xy );
+	vec4 s  = at( c );
+	weights = vec4( 0.0 );
+	where   = vec4( 0.0 );
+	if( s.x <= 0.0 )
+		return;
+	//A spike stands where the pool's surface is highest within a quarter of a
+	//wavelength (the lattice's spikes are four times that apart; a ripple on
+	//a flank is a maximum among its eight neighbours but not this). Ties go
+	//to the lower index, so a flat top makes one spike. The eight first, as
+	//they reject nearly every texel.
+	for( int dy = -1; dy <= 1; ++dy )
+		for( int dx = -1; dx <= 1; ++dx )
+		{
+			if( dx == 0 && dy == 0 )
+				continue;
+			float n    = at( c + ivec2( dx, dy ) ).x;
+			bool after = dy > 0 || ( dy == 0 && dx > 0 );
+			if( n > s.x || ( n == s.x && !after ) )
+				return;
+		}
+	for( int dy = -Reach; dy <= Reach; ++dy )
+		for( int dx = -Reach; dx <= Reach; ++dx )
+		{
+			if( abs( dx ) <= 1 && abs( dy ) <= 1 )
+				continue;
+			if( dx * dx + dy * dy > Reach * Reach )
+				continue;
+			float n    = at( c + ivec2( dx, dy ) ).x;
+			bool after = dy > 0 || ( dy == 0 && dx > 0 );
+			if( n > s.x || ( n == s.x && !after ) )
+				return;
+		}
+	//Its position inside the texel: a Newton step on the gradient, with the
+	//Hessian from the neighbours' gradients.
+	vec4 e = at( c + ivec2( 1, 0 ) ), w = at( c - ivec2( 1, 0 ) );
+	vec4 nn = at( c + ivec2( 0, 1 ) ), so = at( c - ivec2( 0, 1 ) );
+	float hxx = ( e.z - w.z ) / ( 2.0 * Cell.x );
+	float hyy = ( nn.w - so.w ) / ( 2.0 * Cell.y );
+	float hxy = 0.5 * ( ( nn.z - so.z ) / ( 2.0 * Cell.y ) + ( e.w - w.w ) / ( 2.0 * Cell.x ) );
+	float det = hxx * hyy - hxy * hxy;
+	vec2 off  = vec2( 0.0 );
+	if( det > 0.0 && hxx < 0.0 )
+		off = -vec2( hyy * s.z - hxy * s.w, hxx * s.w - hxy * s.z ) / det;
+	off        = clamp( off, -0.5 * Cell, 0.5 * Cell );
+	float peak = s.x + 0.5 * dot( s.zw, off );
+
+	//The field it stands in.
+	vec2 p  = ( vec2( c ) + 0.5 ) * Cell + off - 0.5 * Domain;
+	float u = UniformU;
+	if( Magnet != 0 )
+	{
+		u = 0.0;
+		for( int k = 0; k < 3; ++k )
+		{
+			if( k >= CoilCount )
+				break;
+			u += CurrentsU[ k ] * lookup( CoilTable, ( Hooks & 1024 ) != 0 ? 0.0 : length( p - Centres[ k ] ) / RhoMax );
+		}
+	}
+	//How far the pool's spike has grown towards the pool's own equilibrium.
+	float eq    = row( Equilibrium, NEq, ( u - EqRange.x ) / ( EqRange.y - EqRange.x ) * float( NEq - 1 ) ).x;
+	float grown = clamp( peak / max( eq, 1e-9 ), 0.0, 1.0 );
+	if( ( Hooks & 256 ) != 0 )
+		grown = 1.0;
+	//The solved spike at u (the stable branch; below its fold, the fold's).
+	float v = sqrt( max( u - UFold, 0.0 ) );
+	if( ( Hooks & 512 ) != 0 )
+		v = 0.0;
+	weights = grown * row( Coefficients, NGrid, v / VEnd * float( NGrid - 1 ) );
+	where   = vec4( off, 1.0, peak );
+}
+)";
+
+//---------------------------------------------------------------------------
+// deposit: each spike as a narrow Gaussian at its exact position, carrying its
+// share of the basis, ready to be convolved with the basis by transform.
+//---------------------------------------------------------------------------
+const char* const kDepositFragment = R"(
+uniform sampler2D Weights;
+uniform sampler2D Where;
+uniform ivec2 Size;
+uniform vec2 Cell;
+uniform float Sigma;//metres
+uniform float Norm; //1 / ( 2 pi Sigma^2 )
+
+out vec4 fragColor;
+
+void main()
+{
+	ivec2 c = ivec2( gl_FragCoord.xy );
+	vec2 x  = ( vec2( c ) + 0.5 ) * Cell;
+	vec4 acc = vec4( 0.0 );
+	for( int dy = -4; dy <= 4; ++dy )
+		for( int dx = -4; dx <= 4; ++dx )
+		{
+			ivec2 q  = c + ivec2( dx, dy );
+			ivec2 qw = ( q + Size ) % Size;
+			vec4 wh  = texelFetch( Where, qw, 0 );
+			if( wh.z == 0.0 )
+				continue;
+			vec2 d = x - ( ( vec2( q ) + 0.5 ) * Cell + wh.xy );
+			acc += texelFetch( Weights, qw, 0 ) * exp( -dot( d, d ) / ( 2.0 * Sigma * Sigma ) );
+		}
+	fragColor = acc * Norm;
+}
+)";
+
+//---------------------------------------------------------------------------
+// combine: the deposit's spectrum times the basis, the Gaussian divided out;
+// the surface ( h, h_x + i h_y ) for the inverse transform.
+//---------------------------------------------------------------------------
+const char* const kCombineFragment = R"(
+uniform sampler2D Spectrum;//( D0 + i D1, D2 + i D3 ), unnormalised
+uniform ivec2 Size;
+uniform vec2 Domain;
+uniform float Kc;
+uniform sampler2D Basis;   //NQ x 1: the four basis kernels' transforms, m^3
+uniform int NQ;
+uniform float QMax;
+uniform float Sigma;
+uniform float Norm;        //1 / ( Nx Ny )
+
+out vec4 fragColor;
+
+vec2 conjugate( vec2 a )
+{
+	return vec2( a.x, -a.y );
+}
+
+void main()
+{
+	ivec2 c  = ivec2( gl_FragCoord.xy );
+	ivec2 cm = ( Size - c ) % Size;
+	vec4 z   = texelFetch( Spectrum, c, 0 );
+	vec4 zm  = texelFetch( Spectrum, cm, 0 );
+	//Two real fields in one complex transform: A + i B -> ( Z( k ) + conj Z( -k ) ) / 2
+	//and ( Z( k ) - conj Z( -k ) ) / 2i.
+	vec2 d0 = 0.5 * ( z.xy + conjugate( zm.xy ) );
+	vec2 t1 = 0.5 * ( z.xy - conjugate( zm.xy ) );
+	vec2 d1 = vec2( t1.y, -t1.x );
+	vec2 d2 = 0.5 * ( z.zw + conjugate( zm.zw ) );
+	vec2 t3 = 0.5 * ( z.zw - conjugate( zm.zw ) );
+	vec2 d3 = vec2( t3.y, -t3.x );
+	ivec2 m = ivec2( c.x < Size.x / 2 ? c.x : c.x - Size.x, c.y < Size.y / 2 ? c.y : c.y - Size.y );
+	vec2 k  = 6.283185307179586 * vec2( m ) / Domain;
+	float q = length( k ) / Kc;
+	vec4 b  = vec4( 0.0 );
+	if( q < QMax )
+	{
+		float f = q / QMax * float( NQ - 1 );
+		int i   = min( int( f ), NQ - 2 );
+		b       = mix( texelFetch( Basis, ivec2( i, 0 ), 0 ), texelFetch( Basis, ivec2( i + 1, 0 ), 0 ), f - float( i ) );
+	}
+	float g = exp( -0.5 * Sigma * Sigma * dot( k, k ) );
+	vec2 S  = ( d0 * b.x + d1 * b.y + d2 * b.z + d3 * b.w ) * ( Norm / g );
+	//No derivative at a Nyquist row or column: it has no sign.
+	vec2 kd = vec2( c.x == Size.x / 2 ? 0.0 : k.x, c.y == Size.y / 2 ? 0.0 : k.y );
+	fragColor = vec4( S, times( vec2( -kd.y, kd.x ), S ) );
+}
+)";
+
+//---------------------------------------------------------------------------
 // render: the camera, the black mirror and what it reflects.
 //---------------------------------------------------------------------------
 const char* const kRenderFragment = R"(
@@ -466,10 +680,37 @@ float heightAt( vec2 p )
 	return texture( Surface, p / Domain + 0.5 ).x;
 }
 
+//The normal from the gradient interpolated by Catmull-Rom over 4 x 4 texels,
+//not bilinearly: a spike's flank turns through a right angle in a few texels,
+//and a gradient linear between them has creases that a mirror shows as flutes
+//down every flank. The cubic's gradient field is continuous with its slope.
+float catmullRom( float t, out vec4 w )
+{
+	float t2 = t * t, t3 = t2 * t;
+	w = vec4( -0.5 * t3 + t2 - 0.5 * t, 1.5 * t3 - 2.5 * t2 + 1.0, -1.5 * t3 + 2.0 * t2 + 0.5 * t, 0.5 * t3 - 0.5 * t2 );
+	return 0.0;
+}
+
 vec3 normalAt( vec2 p )
 {
-	vec4 s = texture( Surface, p / Domain + 0.5 );
-	return normalize( vec3( -s.z, -s.w, 1.0 ) );
+	ivec2 size = textureSize( Surface, 0 );
+	vec2 f     = ( p / Domain + 0.5 ) * vec2( size ) - 0.5;
+	vec2 i     = floor( f );
+	vec4 wx, wy;
+	catmullRom( f.x - i.x, wx );
+	catmullRom( f.y - i.y, wy );
+	vec2 g = vec2( 0.0 );
+	for( int y = 0; y < 4; ++y )
+	{
+		vec2 row = vec2( 0.0 );
+		for( int x = 0; x < 4; ++x )
+		{
+			ivec2 c = ( ivec2( i ) + ivec2( x - 1, y - 1 ) + size * 4 ) % size;
+			row += wx[ x ] * texelFetch( Surface, c, 0 ).zw;
+		}
+		g += wy[ y ] * row;
+	}
+	return normalize( vec3( -g, 1.0 ) );
 }
 
 //The unpolarised reflectance of an absorbing dielectric N = n + i k, exact:
@@ -577,6 +818,46 @@ vec3 environment( vec3 o, vec3 d )
 	return light;
 }
 
+//What the camera sees through one point of the pixel: the reflected light,
+//linear, and whether its ray went on to a neighbouring spike.
+vec3 through( vec2 uv, out bool bounced, out vec3 P )
+{
+	//The camera ray, and where it meets the surface. Every ray points down
+	//(Tilt plus half the field of view stays below 90 degrees), so it must
+	//cross the slab's floor if nothing stops it sooner.
+	vec3 d = normalize( Forward + ( 2.0 * uv.x - 1.0 ) * TanHalf.x * Right + ( 2.0 * uv.y - 1.0 ) * TanHalf.y * Up );
+	float t;
+	crossing( Eye, d, ( Eye.z - slab ) / -d.z, ( Eye.z + slab ) / -d.z, t );
+	P      = Eye + d * t;
+	vec3 n = normalAt( P.xy );
+
+	float reflectance = fresnel( dot( -d, n ) );
+	vec3 r            = reflect( d, n );
+
+	//One further bounce: a neighbouring spike, if the reflected ray meets one
+	//before it leaves the slab. A third is not followed. The march leaves from
+	//a cell and a half along the ray: the camera reads the surface between
+	//samples bilinearly while its normal is the cubic gradient's, and the two
+	//disagree by a fraction of a cell on a steep flank -- enough for a ray to
+	//find the spike it has just left. A reflection off a convex surface never
+	//meets that surface again, so nothing real is lost.
+	vec3 seen;
+	vec3 from   = P + n * minStep;
+	float leave = r.z > 0.0 ? ( slab - from.z ) / r.z : ( from.z + slab ) / -r.z;
+	float away  = 6.0 * minStep;
+	float t2;
+	bounced = leave > away && crossing( from, r, away, leave, t2 );
+	if( bounced )
+	{
+		vec3 Q  = from + r * t2;
+		vec3 n2 = normalAt( Q.xy );
+		seen    = fresnel( dot( -r, n2 ) ) * environment( Q, reflect( r, n2 ) );
+	}
+	else
+		seen = environment( P, r );
+	return min( reflectance * seen * Gain, vec3( 1.0 ) );
+}
+
 void main()
 {
 	vec2 frag = gl_FragCoord.xy - vec2( Viewport.xy );
@@ -596,40 +877,33 @@ void main()
 	lipschitz   = 1.1 * max( bounds.y, length( bounds.zw ) ) + 1e-3;
 	minStep     = 0.25 * min( Cell.x, Cell.y );
 
-	//The camera ray, and where it meets the surface. Every ray points down
-	//(Tilt plus half the field of view stays below 90 degrees), so it must
-	//cross the slab's floor if nothing stops it sooner.
-	vec3 d = normalize( Forward + ( 2.0 * uv.x - 1.0 ) * TanHalf.x * Right + ( 2.0 * uv.y - 1.0 ) * TanHalf.y * Up );
-	float t;
-	crossing( Eye, d, ( Eye.z - slab ) / -d.z, ( Eye.z + slab ) / -d.z, t );
-	vec3 P = Eye + d * t;
-	vec3 n = normalAt( P.xy );
-
-	float reflectance = fresnel( dot( -d, n ) );
-	vec3 r            = reflect( d, n );
-
-	//One further bounce: a neighbouring spike, if the reflected ray meets one
-	//before it leaves the slab. A third is not followed. The march leaves from
-	//a cell and a half along the ray: the camera reads the surface between
-	//samples bilinearly while its normal is the spectral gradient's, and the
-	//two disagree by a fraction of a cell on a steep flank -- enough for a ray
-	//to find the spike it has just left. A reflection off a convex surface
-	//never meets that surface again, so nothing real is lost.
-	vec3 seen;
-	vec3 from   = P + n * minStep;
-	float leave = r.z > 0.0 ? ( slab - from.z ) / r.z : ( from.z + slab ) / -r.z;
-	float away  = 6.0 * minStep;
-	float t2;
-	if( leave > away && crossing( from, r, away, leave, t2 ) )
+	bool bounced;
+	vec3 P;
+	vec3 light = through( uv, bounced, P );
+	//The harness's picture of the surface: where each pixel's ray met it, metres.
+	if( ( Hooks & 128 ) != 0 )
 	{
-		vec3 Q  = from + r * t2;
-		vec3 n2 = normalAt( Q.xy );
-		seen    = fresnel( dot( -r, n2 ) ) * environment( Q, reflect( r, n2 ) );
+		fragColor = vec4( P, 1.0 );
+		return;
 	}
-	else
-		seen = environment( P, r );
+	//A pixel whose light came off a neighbour is four samples: a neighbour
+	//seen in a spike's flank is a small, sharp, curved mirror, and one ray a
+	//pixel turns its grazing edges into glitter.
+	if( bounced )
+	{
+		vec2 px = 1.0 / vec2( Viewport.zw );
+		light   = vec3( 0.0 );
+		for( int s = 0; s < 4; ++s )
+		{
+			vec2 o = vec2( s == 0 || s == 3 ? 0.125 : -0.125, s < 2 ? 0.375 : -0.375 );
+			o      = s % 2 == 0 ? o : o.yx;
+			bool b;
+			vec3 q;
+			light += 0.25 * through( uv + o * px, b, q );
+		}
+	}
 
-	vec3 pool   = toCode( min( reflectance * seen * Gain, vec3( 1.0 ) ) );
+	vec3 pool   = toCode( light );
 	float alpha = IsOver != 0 ? mix( clip.a, 1.0, MixAmount ) : 1.0;
 	vec3 rgb    = IsOver != 0 ? mix( clip.rgb, pool, MixAmount ) : pool;
 	fragColor   = vec4( rgb, alpha );
@@ -647,6 +921,9 @@ std::string Assemble( Pass pass )
 	case Pass::Pack: return text + kPackFragment;
 	case Pass::Bounds: return text + kBoundsFragment;
 	case Pass::Render: return text + kRenderFragment;
+	case Pass::Spikes: return text + kSpikesFragment;
+	case Pass::Deposit: return text + kDepositFragment;
+	case Pass::Combine: return text + kCombineFragment;
 	}
 	return text;
 }
