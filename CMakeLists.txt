@@ -75,6 +75,9 @@ add_library(ferrofluid_core OBJECT
     source/GLState.h
     source/Shaders.h
     source/Shaders.cpp
+    source/SpikeTable.h
+    source/SpikeTable.cpp
+    source/Spikes.cpp
     source/Ferrofluid.h
     source/Ferrofluid.cpp
 )
