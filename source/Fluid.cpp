@@ -358,15 +358,23 @@ bool settle( const Nonlinear& model, double m, double p[ 3 ] )
 
 Hexagons ThreeMode( const Nonlinear& model, double m )
 {
-	//Continuation down from well past onset, where the upper branch is the
-	//only nontrivial minimum, to m in steps: the branch followed, not guessed.
+	//Continuation from just past onset, where the upper branch is the only
+	//nontrivial minimum, to m in steps: the branch followed, not guessed. Up as
+	//well as down: settled cold at m 2.05, EMG 909's fitted constants (Hy/Sa
+	//0.63) found no minimum from the guess while the branch ran on smoothly.
 	Hexagons out;
 	if( model.saturation <= 0.0 )
 		return out;
 	double p[ 3 ] = { 0.5 * std::max( model.hysteresis, 0.1 ) / model.saturation, 0.0, 0.0 };
-	const double start = std::max( m, 1.02 );
+	const double start = 1.02;
 	if( !settle( model, start, p ) )
 		return out;
+	for( double mm = start; mm < m; )
+	{
+		mm = std::min( m, mm + 0.01 );
+		if( !settle( model, mm, p ) )
+			return out;
+	}
 	for( double mm = start; mm > m; )
 	{
 		mm = std::max( m, mm - 2e-4 );
