@@ -111,7 +111,7 @@ spikes (`tools/spikes/`, `source/SpikeTable.cpp`, the spikes/deposit/combine pas
   user guide yet) and `ATTRIBUTIONS.md`. Once the project is registered in
   stoatworks-backend, `sync-about.py` and `sync-attributions.py` generate them;
   edit them there then.
-- Local only: `~/dev/ferrofluid`, no remote, nothing released, not on the website.
+- Local only: `~/Projects/resolume/ferrofluid`, no remote, nothing released, not on the website.
 
 ## Not done yet
 - Never loaded into Resolume on either platform. No host has played it any music.
