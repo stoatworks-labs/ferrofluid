@@ -89,6 +89,31 @@ step "Shaders"
 tools/glslc.sh || fail "a shader does not compile"
 
 #---------------------------------------------------------------------------
+step "Browser demo's shaders and spike table"
+#---------------------------------------------------------------------------
+# When a browser demo exists, demo/shaders.js carries copies of
+# source/Shaders.cpp and demo/spiketable.js the part of source/SpikeTable.cpp
+# the plugin uploads. A copy that drifts still paints a plausible pool, so the
+# drift has to fail here instead: rerun
+# `python3 demo/tools/check_shaders.py --write` after changing a shader or
+# regenerating the table. The page's port of the CPU half is not checked by
+# anything here (AGENTS.md, the browser demo).
+if [[ -f demo/tools/check_shaders.py ]]; then
+	log="$( mktemp )"
+	if python3 demo/tools/check_shaders.py >"$log" 2>&1; then
+		echo "   $( tail -1 "$log" )"
+	else
+		grep -E '^FAIL|C\+\+:|js :|first difference' "$log" | head -14
+		fail "the demo's shaders or spike table have drifted from source/"
+	fi
+	rm -f "$log"
+elif [[ -d demo ]]; then
+	fail "demo/ exists but demo/tools/check_shaders.py does not"
+else
+	echo "   skipped: no demo/"
+fi
+
+#---------------------------------------------------------------------------
 step "Submodule"
 #---------------------------------------------------------------------------
 if [[ ! -f external/ffgl/CMakeLists.txt ]]; then
