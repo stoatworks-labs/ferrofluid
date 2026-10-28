@@ -30,9 +30,11 @@ defaults on a frame of Resolume's own IntoTheGlow_02 clip, 3.1 seconds in. Each 
 > source; `SW Ferro Over`, `FE02`, an effect), the controls change Arena's output, all of them but
 > Audio, Band and Threshold, which need sound, and the Over at Mix 0 is bit for bit the clip with
 > the effect bypassed. No sound reached it there.
-> On Windows it has been in **Arena 7.27.1** on software rendering, with no GPU and no sound: both
-> plugins load, register with every parameter as declared, and render. The fleet's sweep of every
-> control there, on the Windows download itself, was still running when this was written.
+> On Windows it has been in **Arena 7.27.1** on software rendering, with no GPU and no sound, from
+> the Windows download itself: both plugins load and register with every parameter as declared,
+> and SW Ferrofluid renders and passes the fleet's Arena checks, with no dead control. SW Ferro
+> Over's picture couldn't be measured there (Arena's capture went black for the bare clip too), so
+> on Windows the Over is untested beyond loading.
 >
 > Everything else was measured offline by a harness (`fetest`) that drives the plugins' own class
 > in a headless GL context on an Apple M4 Max, and `tools/verify.sh` passes (20 October 2026), at
@@ -601,8 +603,8 @@ pool falls behind real time.
 ## Known limits
 
 - **Barely in Resolume yet**: Arena 7.28.1 on macOS with no sound, and Arena 7.27.1 on Windows on
-  software rendering, where the control sweep was still running at release. For what was checked,
-  see the box at the top.
+  software rendering, where the source passed and the Over's picture couldn't be measured. For
+  what was checked, see the box at the top.
 - **No real audio** has reached it, only the harness's synthetic kicks, and nobody has measured what
   Resolume's FFT bins hold, so Band and Threshold are untested against music.
 - **Where the spikes stand and how far they've grown is a chosen model.** The shape of each spike

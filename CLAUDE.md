@@ -134,8 +134,9 @@ spikes (`tools/spikes/`, `source/SpikeTable.cpp`, the spikes/deposit/combine pas
   `stoatworks-backend/resolume-demo/`.
 
 ## Not done yet
-- In Arena on macOS (REST) and Windows (win-lab, load/register/render; the control sweep
-  on v0.1.0's zip was running at release). No host has played it any music.
+- In Arena on macOS (REST) and Windows (win-lab, v0.1.0's zip: both load and register,
+  the source passes; the Over's picture couldn't be measured, the capture went black for the
+  bare clip too). No host has played it any music.
 - No OpenFX port, no presets.
 
 ## Diagnostics

@@ -3,8 +3,9 @@
 > **AI-assisted project.** This codebase was created with [Claude](https://claude.com/claude-code)
 > (Anthropic), directed and reviewed by a human author. It has been in **Resolume Arena 7.28.1
 > on macOS**, where both plugins register and every control that doesn't need sound changes
-> Arena's output, and in **Arena 7.27.1 on Windows** on software rendering, where both load,
-> register with every parameter as declared, and render. What's measured is measured by an offline harness that
+> Arena's output, and in **Arena 7.27.1 on Windows** on software rendering, where both load and
+> register with every parameter as declared and the source passes the fleet's Arena checks (the
+> Over's picture couldn't be measured there). What's measured is measured by an offline harness that
 > drives the real plugin class in a headless GL context on a synthetic clock, on this Mac's
 > GPU at two rasters, and reads the pool back out of the plugin's own state and pixels. Every
 > mode of the surface rings or grows at the Cowley–Rosensweig rate to **1.3e-5** of its
@@ -232,11 +233,16 @@ class in a headless CGL context, plus an `oxbow` load. Since then it has been in
   change nothing in the Over, as they shouldn't: a flat mirror under the screen hands the
   clip straight back.
 - **Arena 7.27.1 on Windows** (the fleet's win-lab, Mesa llvmpipe: software rendering, no
-  GPU, no sound device), on a build of 20 October's code: both DLLs load, both register
-  (`FE01` a source, `FE02` an effect), all 25 of the source's parameters match name, order,
-  type, range and default, and it renders. The pool's 150 passes a frame run Arena at about
-  0.1 fps there, so that run says nothing about speed; the gate's control sweep, on this
-  release's own Windows zip, is running.
+  GPU, no sound device), on this release's own `ferrofluid-windows-x86_64.zip`: both DLLs
+  load and register (`FE01` a source, `FE02` an effect), with every parameter matching name,
+  order, type, range and default (26 and 27 with Arena's own). **SW Ferrofluid** renders and
+  passes the fleet's Arena checks: of its controls, Backdrop, Exposure, Field Width, Fluid,
+  Lights, Tilt and Viscosity measurably changed a still frame, the other nine were too close
+  to call against a pool that never holds still, and none was dead. **SW Ferro Over** couldn't
+  be measured: Arena's capture came back black for the bare clip under it as well, so that
+  run says nothing either way about the Over's picture on Windows. The pool's 150 passes a
+  frame ran Arena at about 0.1 fps there, so it says nothing about speed either. A build of
+  20 October's code loaded, registered and rendered the same way.
 
 No sound reached it in either host, so Audio, Band and Threshold haven't been tried with real
 music, and I haven't seen how Fire On behaves with Arena's transport stopped.

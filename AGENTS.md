@@ -766,6 +766,7 @@ main. What a reader of it must know:
 - **The pool's cost.** About 150 passes a frame; fusing the transform's passes, or fewer
   substeps at low drive, would be the place to start.
 - **Barely seen in a host.** Arena on macOS over REST (every control without sound live)
-  and Windows on llvmpipe (load, register, render; the sweep was still running at
-  release). Not seen: Fire On with Arena's transport stopped, how the controls read in the
+  and Windows on llvmpipe (v0.1.0's zip: both load and register, the source passes with 7
+  controls live and 9 inconclusive; the Over unmeasured, as Arena's capture went black for
+  the bare clip too). Not seen: the Over's picture on Windows, Fire On with Arena's transport stopped, how the controls read in the
   inspector, what the audio does with real music.
