@@ -42,6 +42,9 @@ copper edges where the troughs catch the screen](docs/over.png)
 seconds in) as the clip, at 1.05 I_c with no beats, seven seconds in (`--over --clip
 frame.rgba --set "Fire On=Off" --set "Bias=0.7" --frames 420`).</sub>
 
+<!-- downloads:start -->
+<!-- downloads:end -->
+
 ## The one idea
 
 **A pool of ferrofluid over an electromagnet whose current is the music, seen as the
@@ -247,10 +250,10 @@ reproduce.
 
 ## Build
 
-macOS (universal: Apple Silicon and Intel). The repo isn't published yet; from a checkout:
+macOS (universal: Apple Silicon and Intel):
 
 ```bash
-git submodule update --init
+git clone --recursive https://github.com/stoatworks-labs/ferrofluid
 ```
 
 ```bash
