@@ -76,6 +76,10 @@ macOS builds are signed and notarised and open normally. The Windows builds are 
 
 <!-- downloads:end -->
 
+## Video
+
+[![Ferrofluid: ferrofluid spikes on the beat, as a source and an effect for Resolume](docs/video-thumb.png)](https://www.youtube.com/watch?v=42Lft0Xygdk)
+
 ## The one idea
 
 **A pool of ferrofluid over an electromagnet whose current is the music, seen as the
