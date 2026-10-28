@@ -42,7 +42,7 @@ defaults on a frame of Resolume's own IntoTheGlow_02 clip, 3.1 seconds in. Each 
 > the critical wavelength, with three peaks 60.7°, 56.1° and 63.2° apart. The spikes jump up at onset
 > and hang on below it down to the model's own fold, to within a sweep step. Each spike's shape is
 > solved offline with the full nonlinear magnetostatics, and the solver matches Gollwitzer et al.'s
-> measured pattern amplitudes to within 1.1%. Twenty-one models broken on purpose and sixteen
+> measured pattern amplitudes to within 1.1%. Twenty-one models broken on purpose and seventeen
 > one-character changes to the shipped code are all caught, and all 20 controls of each plugin that
 > have pixels change the picture.
 >
@@ -287,17 +287,15 @@ on the right. Every pulse goes to all three.
 defaults, coils of 5 mm to 2 cm raise one spike; 8 cm raises a field of them. It does nothing with
 *Uniform*.
 
-**Coil Spread** (2 to 30 cm, geometrically; default 8 cm, at 0.512). The side of *Three Coils*'
-triangle. At 2 cm the three patches are one. It does nothing with one coil or with *Uniform*.
-**Keep it at 12 cm or under.** The pool is only 21 cm deep (EFH1; less for EMG 901), and past about
-12 cm the far coil's patch runs off its edge: the harness shows it cut off in a straight line at 16
-cm, a stub of three spikes at 20 cm and nothing at all at 30. That's a bug in this release (*Known
-limits*).
+**Coil Spread** (2 to 10 cm, geometrically; default 8 cm, at 0.861). The side of *Three Coils*'
+triangle. At 2 cm the three patches are one. It does nothing with one coil or with *Uniform*. It
+stops at 10 cm because the pool stops not far past it: the pool is 19 to 22 cm deep, depending on
+the fluid, and a wider triangle put the far coil's patch over its edge (*Known limits*).
 
-| cm | 0.5 | 1 | 2 | 4 | 8 | 12 | 15 | 20 | 30 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Coil Size | 0 | 0.25 | 0.5 | 0.75 | 1 | | | | |
-| Coil Spread | | | 0 | 0.256 | 0.512 | 0.662 | 0.744 | 0.85 | 1 |
+| cm | 0.5 | 1 | 2 | 4 | 8 | 10 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Coil Size | 0 | 0.25 | 0.5 | 0.75 | 1 | |
+| Coil Spread | | | 0 | 0.431 | 0.861 | 1 |
 
 ![Four views of the pool at a wider field: the whole frame full of spikes; one hexagonal patch in the middle; a single spike in the middle; three patches on a triangle](guide-magnet.png)
 
@@ -468,7 +466,7 @@ spikes rarely go all the way down.
 **Three coils, three bands.** Route the audio, then Magnet *Three Coils*, Field Width 0.769 (20
 cm), Fire On *Off* and Gain 0.2 (0.3 I_c). The far patch follows the low end, the left one the
 mids and the right one the top. On the harness's music the hi-hat kept the right-hand patch the
-tallest (the bottom left of the picture at the top). Keep Coil Spread at 12 cm or under.
+tallest (the bottom left of the picture at the top).
 
 **A slow swell.** Fire On *Bar*, Bias 0.6 (0.9 I_c), Gain 0.2 (0.3), Pulse 1 (one second), Coil Lag
 1 (300 ms) and Viscosity 0.799 (30×). The coil drags and the fluid's thick, so after the first bar
@@ -564,9 +562,9 @@ take Bias under 0.6 (0.9 I_c).
 limit of the model (*Known limits*). The default, biased under onset and kicked past it, comes up as
 hexagons, and so does anything in the Helmholtz pair.
 
-**A Three Coils patch is cut off in a straight line, or missing.** Coil Spread is over about 12 cm.
-Turn it down. If the patches are only cut off at the frame's edge, turn Field Width up to about 0.77
-(20 cm).
+**A Three Coils patch is cut off at the frame's edge.** Turn Field Width up to about 0.77 (20 cm).
+If it's cut off in a straight line inside the frame, a big Coil Size at the top of Coil Spread has
+reached the pool's own edge: turn either down.
 
 **The same patch is there twice.** Field Width is wide and Tilt is high, and the frame takes in
 more than the pool. Turn one of them down.
@@ -616,10 +614,10 @@ pool falls behind real time.
   open. In the Helmholtz pair it's hexagons.
 - **EFH1's table stops at 1.566 I_c**, where the solver's grid gives out under the sharpest tips.
   The drive's last few hundredths draw that spike.
-- **Coil Spread past about 12 cm is broken.** The pool is 21 cm deep for EFH1 and repeats at its
-  edges, but the coils' field doesn't, so the far coil's patch is cut off at the pool's edge, and
-  past about 18 cm that coil raises nothing at all. A 30 cm triangle can't fit a 21 cm pool, so the
-  fix (a narrower range, or a bigger pool) is a decision for a later release.
+- **Coil Spread stops at 10 cm.** The pool repeats at its edges and the coils' field doesn't, so a
+  wider triangle had its far coil's patch cut off at the pool's edge, or missing. The harness
+  checks every fluid at the top of the range with the default coil; with Coil Size near its 8 cm
+  top, a patch can still reach the edge.
 - **The pool is about 42 × 21 cm and repeats**, so a wide, steeply tilted frame shows it twice.
 - **The Over's screen is finite**, and doesn't follow Tilt: beyond it is a dark room.
 - **At 30 fps and a hard drive the pool runs slow**, by up to a third, to stay stable.

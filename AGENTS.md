@@ -136,7 +136,7 @@ drawn. So the plugins are the whole chain:
 - **Provisional hand copies**: `source/StoatworksAbout*.h` (guide = "", as graticule did)
   and `ATTRIBUTIONS.md`. The project isn't registered in stoatworks-backend, so
   `sync-about.py` and `sync-attributions.py` can't generate them yet.
-- **Not built**: a user guide, a browser demo, an OpenFX port, presets, a video.
+- **Not built**: an OpenFX port, presets.
 
 ## The solved spikes (2026-10-15, second review)
 
@@ -668,7 +668,8 @@ top can still reach the edge at 10 cm: the check holds the default coil.
 
 `demo/` is <https://ferrofluid-demo.stoatworks-labs.com>, built to the fleet's
 `resolume-demo` kit rules (`~/Projects/resolume/specs/DEMO-BRIEF.md`) by a sub-agent, from
-slipstream's demo. Not deployed when this was written. What a reader of it must know:
+slipstream's demo. Deployed by hand first on 2026-10-28, then by `deploy.yml` on every push to
+main. What a reader of it must know:
 
 - **The shaders are the plugin's**, all eleven pieces plus kVersion, spliced by
   `demo/tools/check_shaders.py --write` into `demo/shaders.js` and compared character for

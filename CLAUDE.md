@@ -135,8 +135,7 @@ spikes (`tools/spikes/`, `source/SpikeTable.cpp`, the spikes/deposit/combine pas
 
 ## Not done yet
 - Never loaded into Resolume on either platform. No host has played it any music.
-- No GitHub repo, no release, no website page, no user guide, no browser demo,
-  no OpenFX port, no video, no presets. The workflows in `.github/` have never run.
+- No OpenFX port, no presets.
 
 ## Diagnostics
 

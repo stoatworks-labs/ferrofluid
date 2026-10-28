@@ -229,7 +229,8 @@ Also assumed rather than measured: the field each point feels is the local one (
 approximation, normal component only); the fluid's optical constants (magnetite in oil,
 mixed by Maxwell Garnett); a deep layer; and the coils' hardware.
 
-There's no user guide, no browser demo, no OpenFX port, no video and no presets yet.
+There's a [user guide](https://stoatworks-labs.com/software/ferrofluid/guide/) and a browser
+demo (below), but no presets and no OpenFX port.
 
 ## Browser demo
 
@@ -273,8 +274,8 @@ The last one copies `Ferrofluid.bundle` and `Ferrofluid Over.bundle` into
 `~/Documents/Resolume Arena/Extra Effects`. Restart Arena and they're under Sources as
 **SW Ferrofluid** and under Effects as **SW Ferro Over**.
 
-Windows needs Visual Studio 2022 and vcpkg (for GLEW); see `.github/workflows/ci.yml`.
-It hasn't been built there.
+Windows needs Visual Studio 2022 and vcpkg (for GLEW); see `.github/workflows/ci.yml`,
+which builds both platforms on every push.
 
 ## Building and testing
 
