@@ -765,5 +765,7 @@ main. What a reader of it must know:
 - **Finite depth** and the dish's wall: the pool is deep and periodic.
 - **The pool's cost.** About 150 passes a frame; fusing the transform's passes, or fewer
   substeps at low drive, would be the place to start.
-- **Never seen in a host.** How Fire On follows Arena's transport, how the controls read in
-  the inspector, what the audio does with real music.
+- **Barely seen in a host.** Arena on macOS over REST (every control without sound live)
+  and Windows on llvmpipe (load, register, render; the sweep was still running at
+  release). Not seen: Fire On with Arena's transport stopped, how the controls read in the
+  inspector, what the audio does with real music.

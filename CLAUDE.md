@@ -134,7 +134,8 @@ spikes (`tools/spikes/`, `source/SpikeTable.cpp`, the spikes/deposit/combine pas
   `stoatworks-backend/resolume-demo/`.
 
 ## Not done yet
-- Never loaded into Resolume on either platform. No host has played it any music.
+- In Arena on macOS (REST) and Windows (win-lab, load/register/render; the control sweep
+  on v0.1.0's zip was running at release). No host has played it any music.
 - No OpenFX port, no presets.
 
 ## Diagnostics

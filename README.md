@@ -1,8 +1,10 @@
 # ferrofluid
 
 > **AI-assisted project.** This codebase was created with [Claude](https://claude.com/claude-code)
-> (Anthropic), directed and reviewed by a human author. It has **never been loaded into
-> Resolume**, on either platform. What's measured is measured by an offline harness that
+> (Anthropic), directed and reviewed by a human author. It has been in **Resolume Arena 7.28.1
+> on macOS**, where both plugins register and every control that doesn't need sound changes
+> Arena's output, and in **Arena 7.27.1 on Windows** on software rendering, where both load,
+> register with every parameter as declared, and render. What's measured is measured by an offline harness that
 > drives the real plugin class in a headless GL context on a synthetic clock, on this Mac's
 > GPU at two rasters, and reads the pool back out of the plugin's own state and pixels. Every
 > mode of the surface rings or grows at the Cowley–Rosensweig rate to **1.3e-5** of its
@@ -152,8 +154,7 @@ the Helmholtz pair, seen from straight above, with the clip on a screen 4 cm up.
 
 ## Status
 
-**v0.1.0, unreleased, 20 October 2026: local only, early days. The spikes are now the
-solved ones.**
+**v0.1.0, released 28 October 2026, and early days. The spikes are the solved ones.**
 
 ### Measured offline, on macOS
 
@@ -214,12 +215,27 @@ passes a frame. At 1.5 I_c the plan takes 31 substeps (EFH1, Uniform) and 36
 
 ### Not established
 
-It's **never been loaded into Resolume**, on either platform. Everything above was
-compiled, rendered and measured offline against the plugin's own class in a headless CGL
-context, plus an `oxbow` load. I haven't seen how the controls read in Arena's inspector,
-how Fire On follows Arena's transport, or what Resolume's own FFT does to Band and
-Threshold. Nothing has been built or run on Windows, and the workflows in `.github/` have
-never run.
+Everything above was compiled, rendered and measured offline against the plugin's own
+class in a headless CGL context, plus an `oxbow` load. Since then it has been in Resolume:
+
+- **Arena 7.28.1 on macOS** (this Mac, 28 October 2026), driven over Arena's REST API: both
+  plugins register (`SW Ferrofluid`, `FE01`, a source; `SW Ferro Over`, `FE02`, an effect),
+  with every control in its declared order and the About block's four buttons. Of the
+  source's 21 controls, the 18 that don't need sound all change Arena's output; Fire On =
+  Beat moves the pool on Arena's beat and Off holds it still. The Over's controls do the same
+  over a lattice held still by Viscosity, and at Mix 0 its output is the effect bypassed, bit
+  for bit (0 of 2,073,600 pixels different). On a flat pool Field Width, Height and Mix
+  change nothing in the Over, as they shouldn't: a flat mirror under the screen hands the
+  clip straight back.
+- **Arena 7.27.1 on Windows** (the fleet's win-lab, Mesa llvmpipe: software rendering, no
+  GPU, no sound device), on a build of 20 October's code: both DLLs load, both register
+  (`FE01` a source, `FE02` an effect), all 25 of the source's parameters match name, order,
+  type, range and default, and it renders. The pool's 150 passes a frame run Arena at about
+  0.1 fps there, so that run says nothing about speed; the gate's control sweep, on this
+  release's own Windows zip, is running.
+
+No sound reached it in either host, so Audio, Band and Threshold haven't been tried with real
+music, and I haven't seen how Fire On behaves with Arena's transport stopped.
 
 **What's solved and what isn't.** Solved, offline (`tools/spikes/`): the shape of a spike.
 For each fluid, the equilibrium surface of the hexagonal pattern's cell with the full

@@ -26,12 +26,13 @@ defaults on a frame of Resolume's own IntoTheGlow_02 clip, 3.1 seconds in. Each 
 1280 × 720 frame at half size.*
 
 > **Before you rely on this:** it's at **v0.1.0**, the first release, and early days. It has been
-> loaded into **Resolume Arena 7.28.1 on macOS**: both plugins register (`SW Ferrofluid`, `FE01`, a <!-- ARENA -->
-> source; `SW Ferro Over`, `FE02`, an effect), the controls change Arena's output, all of them but <!-- ARENA -->
-> Audio, Band and Threshold, which need sound, and the Over at Mix 0 is bit for bit the clip with <!-- ARENA -->
-> the effect bypassed. No sound reached it there. <!-- ARENA -->
-> Nothing has been run on Windows: the Windows download is built by the release pipeline and hasn't
-> been loaded into anything yet. <!-- ARENA -->
+> loaded into **Resolume Arena 7.28.1 on macOS**: both plugins register (`SW Ferrofluid`, `FE01`, a
+> source; `SW Ferro Over`, `FE02`, an effect), the controls change Arena's output, all of them but
+> Audio, Band and Threshold, which need sound, and the Over at Mix 0 is bit for bit the clip with
+> the effect bypassed. No sound reached it there.
+> On Windows it has been in **Arena 7.27.1** on software rendering, with no GPU and no sound: both
+> plugins load, register with every parameter as declared, and render. The fleet's sweep of every
+> control there, on the Windows download itself, was still running when this was written.
 >
 > Everything else was measured offline by a harness (`fetest`) that drives the plugins' own class
 > in a headless GL context on an Apple M4 Max, and `tools/verify.sh` passes (20 October 2026), at
@@ -49,7 +50,8 @@ defaults on a frame of Resolume's own IntoTheGlow_02 clip, 3.1 seconds in. Each 
 > What isn't solved is where the spikes stand and how far they've grown: that's a chosen model,
 > fitted to the solver, and over a single coil held past onset it lays down rows of spikes where a
 > real pool would make hexagons (*Known limits*). No real audio has reached it anywhere, only the
-> harness's synthetic kicks, and I haven't seen how Fire On follows Arena's transport. <!-- ARENA -->
+> harness's synthetic kicks. Fire On does follow Arena's beat; what it does with Arena's transport
+> stopped I haven't seen.
 > There's a browser demo at
 > [ferrofluid-demo.stoatworks-labs.com](https://ferrofluid-demo.stoatworks-labs.com/), which has no
 > audio. Try it on a spare layer before you put it in a show.
@@ -73,7 +75,7 @@ Windows  %USERPROFILE%\Documents\Resolume Arena\Extra Effects\
 ```
 
 Avenue uses the same layout under its own folder name. SW Ferrofluid shows up among the sources and
-SW Ferro Over in the effects browser. <!-- ARENA -->
+SW Ferro Over in the effects browser.
 
 The macOS download is a universal build (Apple silicon and Intel), as a `.dmg` or a `.zip`. It's
 **Developer ID-signed and notarised** by the release pipeline after publication, so the bundles
@@ -89,8 +91,9 @@ installer trips SmartScreen once: **More info** → **Run anyway**.
    EFH1 seen from 35°, and a coil under the middle of it. On the first beat of Resolume's tempo a
    hexagonal patch of black spikes stands up over the coil, and on every beat after that the spikes
    swell and settle back.
-2. Stop Resolume's transport. The spikes stay. Press **Settle** and the pool goes flat, and stays <!-- ARENA -->
+2. Stop Resolume's transport. The spikes stay. Press **Settle** and the pool goes flat, and stays
    flat until the transport starts again. That's not a fault, and *How the pool works* says why.
+   (That's the harness's account; I haven't watched a stopped transport in Arena yet.)
 3. Change **Magnet** to *Uniform*. The coil becomes a Helmholtz pair, the field is the same
    everywhere, and the next beat stands the whole pool up at once.
 4. Change **Lights** to *Backlight* and **Backdrop** to *Black*, and turn **Tilt** up to 1. That's
@@ -178,7 +181,7 @@ Two wrinkles:
   the bar phase move, and from then on a stopped transport means no beats. I haven't seen what
   Resolume sends while its transport is stopped. If it keeps sending the same bar phase, a clip
   triggered while the transport is already stopped will spike on the plugin's own beat until the
-  transport has run once. <!-- ARENA -->
+  transport has run once.
 
 ---
 
@@ -215,12 +218,12 @@ what's left of it four seconds after the press (under a millimetre is ripples):
 At 0.98 the patch stays at about 4 mm; at 0.9 it goes, though close to the fold it can take a few
 seconds about it. So for a press that shows and then goes away, take Bias below the fold and give
 the pulse more Gain or more length: Gain 0.5 I_c with a 1 s Pulse from 0.9 I_c raised spikes in
-Arena on macOS too. <!-- ARENA --> For one that shows and stays, keep Bias inside the loop. A press
+Arena on macOS too. For one that shows and stays, keep Bias inside the loop. A press
 in the first few frames after the clip is triggered can do nothing either: the coil starts from
 nothing and is still coming up to Bias.
 
-**Audio** (Resolume's FFT input). The music. Resolume should offer it as a choice of audio source;
-I haven't seen how it shows it. <!-- ARENA --> With nothing routed, the band levels are 0 and
+**Audio** (Resolume's FFT input). The music. Arena shows it as a choice of where the sound comes
+from: *Local*, *Composition* or *External*. With nothing routed, the band levels are 0 and
 *Onset* never fires.
 
 **Band** (*Low*, *Mid*, *High*, *Full*; default *Low*). Which part of the spectrum the coil follows.
@@ -483,7 +486,7 @@ counts in seconds or milliseconds (Resolume has been seen to send both); after t
 moves the pool on by the host's time since the last, in double precision. A frame longer than a
 tenth of a second only passes a tenth of a second, so a stall doesn't arrive as one enormous kick.
 If the host's clock stops, the pool stops where it is, spikes and all. Which of Resolume's clocks
-that is, and whether stopping the transport stops it, I haven't seen. <!-- ARENA -->
+that is, and whether stopping the transport stops it, I haven't seen.
 
 The beats come from the host's bar phase, and *A stopped transport is a flat pool* says what happens
 when it doesn't move. Changing the composition's size keeps the pool as it was: the harness checks
@@ -597,8 +600,9 @@ pool falls behind real time.
 
 ## Known limits
 
-- **In Resolume only on macOS**, in Arena 7.28.1 with no sound, and nothing run on Windows. For <!-- ARENA -->
-  what was checked there, see the box at the top. <!-- ARENA -->
+- **Barely in Resolume yet**: Arena 7.28.1 on macOS with no sound, and Arena 7.27.1 on Windows on
+  software rendering, where the control sweep was still running at release. For what was checked,
+  see the box at the top.
 - **No real audio** has reached it, only the harness's synthetic kicks, and nobody has measured what
   Resolume's FFT bins hold, so Band and Threshold are untested against music.
 - **Where the spikes stand and how far they've grown is a chosen model.** The shape of each spike
