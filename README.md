@@ -227,6 +227,24 @@ mixed by Maxwell Garnett); a deep layer; and the coils' hardware.
 
 There's no user guide, no browser demo, no OpenFX port, no video and no presets yet.
 
+## Browser demo
+
+**<https://ferrofluid-demo.stoatworks-labs.com/>** has both plugins, with their own controls
+and defaults. All nine passes are the plugin's own GLSL, spliced unedited into
+`demo/shaders.js`, on the plugin's own 512 × 256 pool, and the solved-spike table the plugin
+uploads is copied into `demo/spiketable.js`; `demo/tools/check_shaders.py` (run by
+`tools/verify.sh`) fails on a changed character or number in either. The CPU half (the
+magnetisation, the coils' fields, the drive, the critical current, the substep plan and
+every uniform) is a JavaScript port, and only a reader checks it: nothing in the repo runs it
+against the C++. It was compared with `fetest` once, frame for frame, and planned the same
+substeps and got the same current and m, with 96% and 99.9% of pixels within one level at
+the two settings tried (AGENTS.md). There's no audio in a browser, so Audio, Band and
+Threshold aren't on the page and the beat comes from a BPM clock the page keeps. If a
+browser can't keep up, the page slows its clock, the pool and the beat together, rather than
+crawl along at the plugin's substep cap. It needs WebGL2 with `EXT_color_buffer_float` and
+`OES_texture_float_linear`. It's a demo, not the plugin, and the page says what it doesn't
+reproduce.
+
 ## Build
 
 macOS (universal: Apple Silicon and Intel). The repo isn't published yet; from a checkout:

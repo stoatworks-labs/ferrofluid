@@ -113,6 +113,25 @@ spikes (`tools/spikes/`, `source/SpikeTable.cpp`, the spikes/deposit/combine pas
   edit them there then.
 - Local only: `~/Projects/resolume/ferrofluid`, no remote, nothing released, not on the website.
 
+## Browser demo
+- `demo/` is the page at https://ferrofluid-demo.stoatworks-labs.com (Cloudflare Worker
+  `ferrofluid-demo`, a ROUTE on a proxied AAAA 100:: record -- the zone's custom domains
+  are full; deleting the record takes the page dark with a green deploy). `deploy.yml`
+  redeploys it on a push to main; by hand: `cf-run npx wrangler deploy`.
+- `demo/shaders.js` and `demo/spiketable.js` are GENERATED: after changing
+  `source/Shaders.cpp` or regenerating `source/SpikeTable.cpp` run
+  `python3 demo/tools/check_shaders.py --write`; verify.sh fails on drift, on a new piece
+  the check does not list, on a change to how pieces are joined, and on a change to the
+  `Table` row's shape.
+- `demo/plugin.js` ports the CPU half (PORT block: Controls, Fluid, Coil, Drive, TableFor;
+  FRAME block: Ferrofluid.cpp's ProcessOpenGL). Nothing checks it but a reader: change the
+  C++ and the port with it, and compare a frame against `fetest` again (AGENTS.md, the
+  browser demo, has the recipe and the last numbers).
+- The page's clock governor (`hostTimeFor`) is the one thing it does that the plugin
+  doesn't; the disclosure on the page and AGENTS.md say so.
+- `demo/vendor/` is the shared kit: never edit it, re-vendor from
+  `stoatworks-backend/resolume-demo/`.
+
 ## Not done yet
 - Never loaded into Resolume on either platform. No host has played it any music.
 - No GitHub repo, no release, no website page, no user guide, no browser demo,

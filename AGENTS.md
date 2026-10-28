@@ -649,6 +649,79 @@ its context exists:
 - **Coil Size**, the Over: the Over sits on a Helmholtz pair (Uniform), where no coil has a
   size. On the source, whose default magnet is a coil, it's live bare.
 
+## The browser demo (2026-10-28)
+
+`demo/` is <https://ferrofluid-demo.stoatworks-labs.com>, built to the fleet's
+`resolume-demo` kit rules (`~/Projects/resolume/specs/DEMO-BRIEF.md`) by a sub-agent, from
+slipstream's demo. Not deployed when this was written. What a reader of it must know:
+
+- **The shaders are the plugin's**, all eleven pieces plus kVersion, spliced by
+  `demo/tools/check_shaders.py --write` into `demo/shaders.js` and compared character for
+  character. It also fails on a piece it doesn't list and on a change to the join on either
+  side (`Assemble()`'s switch, InitGL's vertex stage and its table of nine, and plugin.js's
+  copy). The version line is left to the kit's `port()`, as in every demo. **All nine
+  programs compile and link in WebGL2 as spliced** (Chrome, ANGLE on Metal, M4 Max), and no
+  uniform the page sets is missing from its program.
+- **The spike table is the plugin's data.** The same script splices the arrays the plugin
+  uploads (kEq, kCoef and kBasis for each fluid) and the 14 fields of each `kTables` row the
+  frame reads into `demo/spiketable.js`, and compares them as text, the C++ `f` dropped. It
+  also checks each row's 23 fields against SpikeTable.h's order, and proves in rationals
+  that every literal rounds to the same float through a double (the page's path) as
+  straight to a float (clang's): they're 10-digit prints of doubles, so a midpoint is
+  possible in principle; none of the 7,680 is on one.
+- **The CPU half is a port, and only a reader checks it.** Between plugin.js's PORT markers:
+  Controls.cpp, Fluid.cpp (not ThreeMode, SaddleNode or PoolEquilibrium, which only a
+  harness override of the fitted constants reaches), Coil.cpp, Drive.cpp, Spikes.cpp's
+  TableFor; between the FRAME markers, Ferrofluid.cpp's ProcessOpenGL and everything it
+  calls. Not ported: Audio.cpp (with silence in the buffer every band level is
+  0 / max( 0.02, peak ) = 0 and it never fires, so the page hands the drive exactly that),
+  the clock's seconds-or-milliseconds vote (the page's unit is known), Diag, the test hooks.
+  Nothing in the repo runs the port against the C++.
+- **Compared with fetest once, by hand (2026-10-28).** A fresh instance driven in the page
+  as `fetest`'s Rig drives the plugin (frame f at f/60 s, `SetBeatInfo( 120, fmod( t 120 /
+  240, 1 ) )`, a float framebuffer, quantised as `writePng` does), against
+  `fetest --out` built from this tree, at 1280 x 720:
+
+  | settings | the page's summary against fetest's | pixels identical | within 1 level | over 32 levels |
+  | --- | --- | --- | --- | --- |
+  | the defaults, 180 frames | 12 substeps of 1.389 ms, 0.980 Ic (Ic 3.52 A), m 0.961: the same | 83.2% | 96.2% | 0.075% |
+  | the README's first picture, 420 frames | 12 substeps of 1.389 ms, 1.050 Ic (Ic 12.02 A), m 1.101: the same | 99.4% | 99.92% | 0.013% (121 px) |
+
+  In the settled lattice what differs is glints on the spikes' edges. In the default's
+  growing patch a few spikes also stand a little higher or lower: the pool is an
+  instability, and the two shader compilers (Apple's GL, ANGLE's Metal) don't round alike.
+  Nothing repeats this; a change to the frame logic needs it done again.
+- **The clock governor is the page's, not the plugin's.** A frame at 60 fps is a dozen
+  substeps of twelve passes and 27 passes more. A browser that can't draw that in real
+  time spirals: longer frames, more substeps each, then the plugin's cap of 48 and dropped
+  time at a few frames a second (seen once, headless, before the governor existed:
+  switching to Three Coils at 1.08 Ic straight after loading sat at 48 substeps and 13 fps).
+  So `hostTimeFor()` slows the host time the plugin and the transport see while frames come
+  slower than 20 a second and the plan is still running more than six substeps a frame,
+  and lets it back to real time above 30 a second or at four substeps or fewer. On the M4
+  Max the defaults run at 60 fps and full speed, 1080p at about 41, and a 4K composition of
+  Three Coils past onset settles at about 25 fps and 12% of real time. The disclosure says
+  so and the status line gives the speed. Nothing about the pool, the plan or the passes
+  changes.
+- **The page's decisions.** Audio, Band and Threshold are left off the panel (bassalt's,
+  cadence's and vocoder's rule); Fire On keeps Onset, which never fires. Fire and Settle are
+  toggles released after one frame. The beat is a Host BPM clock (120 at first) whose bar
+  phase is accumulated from the page's seconds and sent through the port of SetBeatInfo, as
+  `fetest` and zoetrope's page do. The Plugin dropdown is a new instance with that plugin's
+  constructor defaults (the Over's Uniform and Tilt 0). The source binds the coil table to
+  the clip's unit, as the plugin does; MaxUV is 1, the kit's clip being exactly its size.
+- **It needs WebGL2 with `EXT_color_buffer_float` and `OES_texture_float_linear`** (the
+  camera's surface is RGBA32F read through `texture()`), and stops with a message without
+  either rather than show a flat pool.
+- **Checking it.** Serve `demo/`, load it headlessly with
+  `stoatworks-backend/release/cdpshot.py` (Chrome's `--use-angle=metal` gets the GPU
+  headless on this Mac; SwiftShader is far too slow for the pool), and drive it through
+  `window.ferrofluidDemo`: `renderer.newInstance( isEffect )` gives a plugin the page can
+  run frame by frame into its own framebuffer, as above.
+- **Deploying.** A Worker ROUTE, not a custom domain (the zone is full): the proxied AAAA
+  100:: record for `ferrofluid-demo` has to exist before the first deploy, and
+  `deploy.yml` needs the `CLOUDFLARE_API_TOKEN` secret and `CLOUDFLARE_ACCOUNT_ID` variable.
+
 ## Open questions
 
 - **The dynamics between equilibria.** A growing or collapsing spike is the equilibrium
