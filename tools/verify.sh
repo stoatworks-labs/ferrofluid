@@ -191,7 +191,7 @@ step "Checks (this Mac's GPU, 1280x720 and 320x180)"
 # at both rasters itself, except hysteresis, spread and extremes, which run at
 # 320x180 only: the pool is in metres and they measure the pool, not the
 # picture (AGENTS.md says so check by check).
-CHECKS="fft dispersion onset wavelength hexagons hysteresis spread mirror fresnel audio resize state extremes spikes blend coilspikes"
+CHECKS="fft dispersion onset wavelength hexagons hysteresis spread fit mirror fresnel audio resize state extremes spikes blend coilspikes"
 for check in $CHECKS coil beat names cues calibration; do
 	if out=$( "$FETEST" --$check 2>&1 ); then
 		printf '   ok   fetest --%s: %s checks\n' "$check" "$( printf '%s\n' "$out" | grep -c '^  ok' )"

@@ -50,7 +50,7 @@ spikes (`tools/spikes/`, `source/SpikeTable.cpp`, the spikes/deposit/combine pas
   universal build with no warnings, both bundles through lipo, plist, ad-hoc signature,
   `oxbow probe` and `selftest`; every GPU check at 1280x720 and 320x180; four of them
   again on Apple's software renderer; `--offline`; `--pipe` for both; the spike table's
-  checks; the negative controls; 16 mutants; the sweep; the bench): 11 to 19 minutes on
+  checks; the negative controls; 17 mutants; the sweep; the bench): 11 to 19 minutes on
   this Mac, more when other builds share it. In a sandboxed Claude session set `TMPDIR`
   to a writable scratch directory, or `glslc.sh` hangs on its heredoc.
 - **No GL** (`--offline` runs these and their negatives): `--coil` (the L/R lag,
@@ -61,8 +61,9 @@ spikes (`tools/spikes/`, `source/SpikeTable.cpp`, the spikes/deposit/combine pas
   `--onset` (Mahr & Rehberg's H_c; the sweep's threshold against M_c),
   `--wavelength` (k_c from the heights and from the picture), `--hexagons`,
   `--hysteresis` (the solver against the model's own three-mode reduction),
-  `--spread` (the pattern's edge over a coil), `--extremes` (the corners stay
-  finite and bounded).
+  `--spread` (the pattern's edge over a coil), `--fit` (Three Coils at the top of
+  Coil Spread still fits the periodic pool, every fluid), `--extremes` (the corners
+  stay finite and bounded).
 - **The light**: `--mirror` (the Over at R = 1 returns the clip to the pixel,
   mirrored), `--fresnel` (each pixel's reflectance over R0).
 - **The solved spikes**: `--spikes` (a lattice of the pool's spikes at equilibrium is
@@ -72,7 +73,7 @@ spikes (`tools/spikes/`, `source/SpikeTable.cpp`, the spikes/deposit/combine pas
   pattern engine's fold and onset height are the solver's).
 - **The rest**: `--audio`, `--resize`, `--state`.
 - The checks can fail: `./build/fetest --negative` (21 wrong models),
-  `tools/mutate.sh` (16 mutants).
+  `tools/mutate.sh` (17 mutants).
 - No dead controls: `python3 tools/sweep.py` (both plugins; `--bare` drops the
   contexts and lists the controls that need one).
 - Render cost: `./build/fetest --bench`; one transform alone: `--fftbench`.

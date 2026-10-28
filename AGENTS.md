@@ -615,7 +615,7 @@ mirror, fresnel and state again on Apple's software renderer at 320 × 180.
 | coilspikes | every spike given the field on its coil's axis |
 | calibration | the pattern engine left at the old defaults, Hy 1 and Sa 0.5 |
 
-`tools/mutate.sh`: 16 one-character mutants, each must fail its named check.
+`tools/mutate.sh`: 17 one-character mutants, each must fail its named check.
 
 | mutant | caught by |
 | --- | --- |
@@ -635,6 +635,7 @@ mirror, fresnel and state again on Apple's software renderer at 320 × 180.
 | C++: the L/R lag's exponent dt·τ | `--coil` |
 | C++: the beat's place in its frame from the sum of phases | `--beat` |
 | C++: the first frame primed with a flux of 1 | `--audio` |
+| C++: Coil Spread back to 30 cm, past the pool | `--fit` |
 
 ## The sweep's honest list
 
@@ -646,6 +647,20 @@ its context exists:
 - **Band** and **Threshold**, both plugins: they act on the audio, and with no music in the
   buffer there's nothing for them to act on.
 - **Coil Spread**, both plugins: it places the three coils, and only Three Coils has three.
+
+## Coil Spread stops at 10 cm (2026-10-28)
+
+It went to 30 cm until the guide-writer found the far coil's patch cut off in a straight line
+past about 12 cm (seen straight down at Field Width 40 cm): the pool is periodic and fixed
+per fluid (EMG 901's is 376 × 188 mm), and the coils' field isn't, so a coil the triangle
+puts near the pool's edge has its patch wrapped onto the far side, where its field is weak.
+`fetest --fit` puts each fluid at the top of the Spread and of the Bias, with the default
+coil and the shipped model, and asks for every coil's patch with no spike within half a
+wavelength of the edge. At 12 cm EMG 901's nearest spike stood 2.6 mm from it, so 10 cm
+(8.4 mm); at 30 cm the top coil had no patch at all. A bigger pool was the other fix and
+costs every frame. Narrowing a range was free before the first release; after it, Arena's
+saved compositions would read the old values as new distances. A Coil Size near its 8 cm
+top can still reach the edge at 10 cm: the check holds the default coil.
 - **Coil Size**, the Over: the Over sits on a Helmholtz pair (Uniform), where no coil has a
   size. On the source, whose default magnet is a coil, it's live bare.
 

@@ -680,6 +680,74 @@ int runSpread( const Perturb& perturb )
 }
 
 //===========================================================================
+// --fit: Three Coils at the top of Coil Spread still fits the pool.
+//===========================================================================
+// The pool is periodic and fixed per fluid (EMG 901's is 188 mm deep); the
+// coils' field is not. A coil the Spread puts too near the pool's edge has
+// its patch cut off there in a straight line, which is what the range used to
+// allow (2-30 cm). So: at the top of the Spread and of the Bias, with the
+// default coil and the shipped model, every coil has its patch and no spike
+// stands within half a wavelength of the pool's edge, for every fluid.
+int runFit( const Perturb& perturb )
+{
+	std::printf( "\n=== fit: at the top of Coil Spread and of Bias, each of Three Coils' patches stands whole inside the periodic pool, "
+	             "for every fluid\n" );
+	const double coilRadius = 0.04;
+	for( int f = 0; f < 3; ++f )
+	{
+		const physics::Datasheet& fluid = physics::FluidOf( static_cast< physics::FluidId >( f ) );
+		const double lambda             = physics::CriticalWavelength( fluid );
+		Rig rig;
+		const Raster& raster = kRasters.back();
+		if( !startRig( rig, raster.w, raster.h, perturb ) )
+			return 1;
+		rig.plugin.ClearModelForTest();
+		rig.Set( PT_FLUID, static_cast< float >( f ) );
+		rig.Set( PT_MAGNET, static_cast< float >( Magnet::ThreeCoils ) );
+		rig.Set( PT_COIL_SIZE, ParamFromCoilSize( coilRadius ) );
+		rig.Set( PT_COIL_SPREAD, 1.0f );
+		rig.Set( PT_BIAS, 1.0f );
+		rig.Set( PT_NOISE, ParamFromNoise( 1e-3 ) );
+		if( !rig.Render( 420 ) )
+			return 1;
+
+		const std::vector< double > h = poolHeights( rig );
+		const Pool& p                 = rig.plugin.CurrentPool();
+		double tallest                = 0.0;
+		for( double v : h )
+			tallest = std::max( tallest, v );
+		const double side = SpreadFromParam( 1.0f ), R = side / std::sqrt( 3.0 );
+		const double cx[ 3 ] = { 0.0, -0.5 * side, 0.5 * side }, cy[ 3 ] = { R, -0.5 * R, -0.5 * R };
+		int near[ 3 ]  = { 0, 0, 0 };
+		double edge    = 1e9;
+		for( int j = 0; j < p.ny; ++j )
+			for( int i = 0; i < p.nx; ++i )
+			{
+				const double v = h[ static_cast< size_t >( j ) * p.nx + i ];
+				if( v < 0.25 * tallest )
+					continue;
+				bool top = true;
+				for( int dj = -1; dj <= 1 && top; ++dj )
+					for( int di = -1; di <= 1 && top; ++di )
+						if( ( di || dj ) && h[ static_cast< size_t >( ( j + dj + p.ny ) % p.ny ) * p.nx + ( i + di + p.nx ) % p.nx ] > v )
+							top = false;
+				if( !top )
+					continue;
+				const double x = ( i + 0.5 ) / p.nx * p.lx - 0.5 * p.lx, y = ( j + 0.5 ) / p.ny * p.ly - 0.5 * p.ly;
+				for( int c = 0; c < 3; ++c )
+					if( std::hypot( x - cx[ c ], y - cy[ c ] ) < coilRadius + lambda )
+						++near[ c ];
+				edge = std::min( edge, std::min( 0.5 * p.lx - std::fabs( x ), 0.5 * p.ly - std::fabs( y ) ) );
+			}
+		Check( tallest > 0.1 / physics::CriticalWavenumber( fluid ) && near[ 0 ] >= 3 && near[ 1 ] >= 3 && near[ 2 ] >= 3 && edge > 0.5 * lambda,
+		       fmt( "%s, a %.0f mm triangle in a %.0f x %.0f mm pool: %d, %d and %d spikes over the three coils, the nearest %.1f mm "
+		            "from the pool's edge (at least half lambda_c, %.1f mm)",
+		            fluid.name, side * 1e3, p.lx * 1e3, p.ly * 1e3, near[ 0 ], near[ 1 ], near[ 2 ], edge * 1e3, 0.5 * lambda * 1e3 ) );
+	}
+	return Verdict();
+}
+
+//===========================================================================
 // --mirror: a flat pool, Fresnel set to 1, is the clip, to the pixel.
 //===========================================================================
 int runMirror( const Perturb& perturb )

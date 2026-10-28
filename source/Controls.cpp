@@ -33,7 +33,10 @@ constexpr double kCurrentHigh = 1.5;
 constexpr double kLagLow = 1e-3, kLagHigh = 0.3;
 constexpr double kPulseLow = 0.01, kPulseHigh = 1.0;
 constexpr double kCoilLow = 0.005, kCoilHigh = 0.08;
-constexpr double kSpreadLow = 0.02, kSpreadHigh = 0.30;
+//Coil Spread stops at 10 cm: the pool is periodic and fixed per fluid (EMG
+//901's is 188 mm deep), and past that the far coil's patch is cut off at the
+//pool's edge. fetest --fit holds the top of the range to it.
+constexpr double kSpreadLow = 0.02, kSpreadHigh = 0.10;
 constexpr double kViscLow = 0.25, kViscHigh = 100.0;
 constexpr double kNoiseLow = 1e-6, kNoiseHigh = 1e-1;
 constexpr double kFieldLow = 0.02, kFieldHigh = 0.40;

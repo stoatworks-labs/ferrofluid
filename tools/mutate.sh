@@ -38,6 +38,7 @@ MUTANTS=(
 	"source/Coil.cpp|std::exp( -dt / tau )|std::exp( -dt * tau )|--coil|C++: the L/R lag's exponent dt tau, / -> *"
 	"source/Drive.cpp|( boundary - p0 ) / ( p1 - p0 )|( boundary + p0 ) / ( p1 - p0 )|--beat|C++: the beat's place in its frame from the sum of phases, - -> +"
 	"source/Audio.cpp|			flux = 0.0f;|			flux = 1.0f;|--audio|C++: the first frame primed with a flux of 1, not 0, 0 -> 1"
+	"source/Controls.cpp|kSpreadHigh = 0.10;|kSpreadHigh = 0.30;|--fit|C++: Coil Spread back to 30 cm, past the pool, 1 -> 3"
 )
 
 limit() {

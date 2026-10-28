@@ -308,6 +308,7 @@ const std::vector< CheckEntry >& checks()
 		{ "hysteresis", runHysteresis, false },
 		{ "coil", runCoil, true },
 		{ "spread", runSpread, false },
+		{ "fit", runFit, false },
 		{ "mirror", runMirror, false },
 		{ "fresnel", runFresnel, false },
 		{ "beat", runBeat, true },

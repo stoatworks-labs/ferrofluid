@@ -11,7 +11,7 @@
 > **5.9 kA/m**). The settled lattice sits at the critical wavelength, from the heights and
 > from the picture, with three peaks **60.7°, 56.1° and 63.2°** apart. The spikes jump up at
 > onset and hang on below it until the model's own saddle-node, to within a sweep step.
-> **21** deliberately wrong models and **16** one-character mutants of the shipped code are
+> **21** deliberately wrong models and **17** one-character mutants of the shipped code are
 > all caught. The spikes' **shapes are solved**, offline, with the full nonlinear
 > magnetostatics, and the solver matches the fit to Gollwitzer et al.'s measured pattern
 > amplitudes to within **1.1%**. Where the spikes stand and how far they've grown is still a
@@ -109,7 +109,7 @@ None of this is drawn. It's the fluid doing what it does.
 | Group | |
 | --- | --- |
 | **Drive** | Fire On (Off, Beat, Half Beat, 2 Beats, Bar, Onset), Fire (a pulse now), Audio (Resolume's audio input), Band (Low, Mid, High, Full), Gain and Bias (0–1.5 critical currents), Coil Lag (L/R, 1–300 ms), Threshold (how hard an onset must hit), Pulse (10 ms–1 s). |
-| **Magnet** | Magnet (Uniform, Coil, Three Coils), Coil Size (the solenoid's radius, 5 mm–8 cm), Coil Spread (Three Coils' triangle, 2–30 cm a side). |
+| **Magnet** | Magnet (Uniform, Coil, Three Coils), Coil Size (the solenoid's radius, 5 mm–8 cm), Coil Spread (Three Coils' triangle, 2–10 cm a side). |
 | **Fluid** | Fluid (EFH1, EMG 901, EMG 909), Viscosity (0.25–100× the datasheet's), Noise (the floor the spikes grow from: 0, then 1 µPa–0.1 Pa), Settle (flatten the pool). |
 | **View** | Field Width (2–40 cm), Tilt (0–60°), Height (the Over's screen above the pool, 2 cm–1 m), Exposure (±4 stops), Lights (source: Soft Box, Two Boxes, Strips, Backlight, Window, Neon, Rim), Backdrop (source: Black, Studio), Mix (Over). |
 
@@ -147,6 +147,7 @@ again on **Apple's software renderer** at 320×180. What it establishes:
 | `--coilspikes` | over the default coil at 1.3 I_c: 20 spikes, the tallest (**8.97 mm**) 5.5 mm from the axis (bound λ_c), and of 145 pairs half a wavelength or more apart in radius, **5** have the outer one taller (bound 10%) |
 | `--coil` | the L/R lag against 1 − e^(−t/τ) to 1.1e-16; the AGM's K(½) and E(½) against the tables; one loop's field against Biot–Savart to 2.8e-13; the solenoid's table against 400 turns summed one by one to 2.5e-5 |
 | `--spread` | over the default coil at 1.2 and 1.4 I_c, the outermost spike stands at **17.0** and **21.1 mm** from the axis, where the local magnetisation crosses M_c at **18.1** and **22.5 mm** (tolerance λ_c, 9.8 mm) |
+| `--fit` | Three Coils at the top of Coil Spread (10 cm) and of Bias (1.5 I_c), each fluid: every coil has its patch and the nearest spike stands **8.4 mm** from the periodic pool's edge at worst (EMG 901; bound half λ_c, 4.4 mm). At the old 30 cm the top coil had none |
 | `--mirror` | the Over straight down at a flat pool with the reflectance forced to 1 returns a noise card with **0 of 3 686 400** channels different in 8 bits; at Mix 0, **0** floats differ from the clip; both rasters |
 | `--fresnel` | a flat pool under a uniform sky at Tilt 0 and 45° (incidence 0.6° to 50.3°): each pixel's R/R0 against the exact unpolarised formula for n + ik to **5.5e-7** (bound 2e-4); EFH1's R0 = 0.0450 |
 | `--beat` | Beat, Half Beat, 2 Beats and Bar at 120 and 97 BPM: every pulse starts within **1.8e-15 s** of its beat |
@@ -156,7 +157,7 @@ again on **Apple's software renderer** at 320×180. What it establishes:
 | `tools/spikes/check.py` | the table is what the generator makes from the solved records, byte for byte, against its recorded SHA-256; sampled records still solve the hexagonal cell (residual under **1.7e-11 m**); a lattice of the table's kernels is the solver's cell to **0.2%** of the peak at every solved field; the solver against Gollwitzer et al. (below); the equal-area circle against the hexagon |
 | `--pipe` | both plugins: 2.5 frames in, exactly 2 out; a closed stdout (`\| head -c 1`) exits 1, not 141 |
 | `--negative` | **21** deliberately wrong models, **21** caught |
-| mutation | **16** one-character mutants of the shipped GLSL and C++, **16** caught |
+| mutation | **17** one-character mutants of the shipped GLSL and C++, **17** caught |
 | `tools/sweep.py` | all **20** controls of each plugin that have pixels measurably change the picture |
 | shaders | all 10 compile through `glslc`, not merely through Apple's driver |
 | the bundles | both universal (`x86_64 arm64`), export `plugMain`, ad-hoc sign; `oxbow` reports `SW Ferrofluid` / `FE01` / `source` and `SW Ferro Over` / `FE02` / `effect` and renders through both |
@@ -179,7 +180,7 @@ and 6.2 ms. The spikes add five passes and two transforms of the camera's surfac
 1.8 ms, timed pass by pass on 15 October with the CPUs busy), and the substep plan's wider
 margin (AGENTS.md) adds a few substeps. How much of the rest is sharing wasn't measured on a
 quiet machine. Most of the cost is the pool, which costs the same at any raster: about 150
-passes a frame. At the drive's ceiling the plan takes 31 substeps (EFH1, Uniform) and 36
+passes a frame. At 1.5 I_c the plan takes 31 substeps (EFH1, Uniform) and 36
 (Three Coils), under its cap of 48. macOS figures only.
 
 ### Not established

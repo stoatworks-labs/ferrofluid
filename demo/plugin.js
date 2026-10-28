@@ -159,7 +159,7 @@ const kPulseHigh = 1.0;
 const kCoilLow = 0.005;
 const kCoilHigh = 0.08;
 const kSpreadLow = 0.02;
-const kSpreadHigh = 0.30;
+const kSpreadHigh = 0.10;
 const kViscLow = 0.25;
 const kViscHigh = 100.0;
 const kNoiseLow = 1e-6;
@@ -183,7 +183,7 @@ const ParamFromPulse = (s) => inverseGeometric(s, kPulseLow, kPulseHigh);
 /** Coil Size: the solenoid's radius, 5 mm to 8 cm, geometrically. Metres. */
 const CoilSizeFromParam = (v) => geometric(v, kCoilLow, kCoilHigh);
 const ParamFromCoilSize = (m) => inverseGeometric(m, kCoilLow, kCoilHigh);
-/** Coil Spread: the triangle's side, 2 to 30 cm, geometrically. Metres. */
+/** Coil Spread: the triangle's side, 2 to 10 cm, geometrically. Metres. */
 const SpreadFromParam = (v) => geometric(v, kSpreadLow, kSpreadHigh);
 const ParamFromSpread = (m) => inverseGeometric(m, kSpreadLow, kSpreadHigh);
 /** Viscosity: a multiple of the datasheet's, 0.25x to 100x, geometrically. */
@@ -1703,7 +1703,7 @@ const SPEC = [
 
   ['magnet', PT.MAGNET, null, 'Uniform: a Helmholtz pair, the same field across the pool. Coil: one solenoid under the middle, so the spikes appear there first and spread as the current rises. Three Coils: three in a triangle, which follow Low, Mid and High in Resolume; with no music here, all three move only with the pulses.'],
   ['coilSize', PT.COIL_SIZE, (v) => mm(CoilSizeFromParam(V(v))), 'The solenoid’s radius, 5 mm to 8 cm. Uniform has no coil to size.'],
-  ['coilSpread', PT.COIL_SPREAD, (v) => cm(SpreadFromParam(V(v))), 'Three Coils: the side of their triangle, 2 to 30 cm. Nothing else has a spread.'],
+  ['coilSpread', PT.COIL_SPREAD, (v) => cm(SpreadFromParam(V(v))), 'Three Coils: the side of their triangle, 2 to 10 cm. Nothing else has a spread.'],
 
   ['fluid', PT.FLUID, null, 'Which datasheet: Ferrotec’s EFH1, or EMG 901 or EMG 909 as Mahr & Rehberg measured them. Another fluid is another pool, so it starts flat.'],
   ['viscosity', PT.VISCOSITY, (v) => `×${sig(ViscosityFromParam(V(v)))}`, 'A multiple of the datasheet’s viscosity, 0.25× to 100×.'],
@@ -1779,7 +1779,7 @@ const mounted = mountDemo({
     'Fire and Settle are FF_TYPE_EVENT in the plugin; here they’re toggles the page lets go of after one frame, one rising edge each, which is what the plugin counts. The About block isn’t on the panel.',
     'Switching the Plugin dropdown makes a new instance, as it would in Resolume: a flat pool and that plugin’s own defaults. SW Ferro Over puts the pool in the Helmholtz pair and looks straight down, and declares Height and Mix where SW Ferrofluid declares Lights and Backdrop.',
     'In the Over the clip is the kit’s generated one (or your own file), 8-bit and premultiplied, as Resolume hands an effect its input. The README’s Over picture was made with one of Resolume’s bundled clips, which isn’t here.',
-    'Nothing here is measured. The plugin’s harness holds every mode of the pool to the Cowley–Rosensweig rate to 1.3e-5 of its height, puts the onset within a quarter of a per cent of the theory’s current and the lattice at the critical wavelength with its peaks 60° apart, and holds each spike’s summit to the solved one’s to 0.16%, with twenty-one deliberately wrong models and sixteen mutants all caught. That harness, not this page, is the reason to believe the pool. The plugin itself has been loaded into Resolume Arena 7.28.1 on macOS, where both plugins register and their controls change Arena’s output; the README’s Status says what was and wasn’t tested there.',
+    'Nothing here is measured. The plugin’s harness holds every mode of the pool to the Cowley–Rosensweig rate to 1.3e-5 of its height, puts the onset within a quarter of a per cent of the theory’s current and the lattice at the critical wavelength with its peaks 60° apart, and holds each spike’s summit to the solved one’s to 0.16%, with twenty-one deliberately wrong models and seventeen mutants all caught. That harness, not this page, is the reason to believe the pool. The plugin itself has been loaded into Resolume Arena 7.28.1 on macOS, where both plugins register and their controls change Arena’s output; the README’s Status says what was and wasn’t tested there.',
   ],
 
   createRenderer: (gl, quad) => {
