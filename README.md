@@ -53,8 +53,8 @@ frame.rgba --set "Fire On=Off" --set "Bias=0.7" --frames 420`).</sub>
 
 | Build | Download | Size |
 | --- | --- | --- |
-| Universal (Apple Silicon + Intel) · .dmg disk image | [`ferrofluid-0.1.0-macos-universal.dmg`](https://github.com/stoatworks-labs/ferrofluid/releases/download/v0.1.0/ferrofluid-0.1.0-macos-universal.dmg) | 1.0 MB |
-| Universal (Apple Silicon + Intel) · .zip archive | [`ferrofluid-macos-universal.zip`](https://github.com/stoatworks-labs/ferrofluid/releases/latest/download/ferrofluid-macos-universal.zip) | 617 KB |
+| Universal (Apple Silicon + Intel) · .dmg disk image | [`ferrofluid-0.1.0-macos-universal.dmg`](https://github.com/stoatworks-labs/ferrofluid/releases/download/v0.1.0/ferrofluid-0.1.0-macos-universal.dmg) | 724 KB |
+| Universal (Apple Silicon + Intel) · .zip archive | [`ferrofluid-macos-universal.zip`](https://github.com/stoatworks-labs/ferrofluid/releases/latest/download/ferrofluid-macos-universal.zip) | 661 KB |
 
 </details>
 
@@ -70,7 +70,7 @@ frame.rgba --set "Fire On=Off" --set "Bias=0.7" --frames 420`).</sub>
 
 All builds, checksums and release notes: [github.com/stoatworks-labs/ferrofluid/releases](https://github.com/stoatworks-labs/ferrofluid/releases).
 
-The Windows builds are unsigned, so SmartScreen warns once.
+macOS builds are signed and notarised and open normally. The Windows builds are unsigned, so SmartScreen warns once.
 
 <!-- downloads:end -->
 
